@@ -1,0 +1,410 @@
+---
+title: "NON-LINEAR MODELS:"
+subtitle: "Basis Functions and Generalized Additive Models"
+author: "Marco R. Steenbergen"
+institute: "University of Zurich"
+format:
+  revealjs:
+    self-contained: true
+    fig-format: retina
+    toc: true
+    toc-depth: 1
+    number-sections: false
+    toc-title: "In this lecture"
+    theme: [default, "sydney.scss"]
+    code-line-numbers: false
+    slide-number: c
+    scrollable: false
+    pdf-max-pages-per-slide: 1
+    history: false # don't add each slide to browser history
+bibliography: /Users/poli-glot/Documents/Tools/references.bib
+csl: apa-old-doi-prefix.csl
+execute:
+  echo: true
+---
+
+# Theory
+
+## Motivation
+
+::: columns
+::: {.column width="50%"}
+```{r}
+#| echo: false
+#| message: false
+library(ISLR)
+library(tidyverse)
+data(Wage)
+ggplot(Wage, aes(x = age, y = wage)) +
+  geom_jitter(position = "jitter", size = 1.5, col = "#fde725") +
+  labs(x = "Age", y = "Wage") +
+  theme_bw()
+```
+:::
+
+::: {.column width="50%"}
+-   Mid-Atlantic wage data from `ISLR`.
+
+-   There appears to be a curvilinear relationship.
+
+-   If we miss this, we may under-fit the data and generate bias error.
+
+-   But how do we build non-linear relationships into a "linear" regression model?
+
+-   We use basis functions in the pre-processing stage.
+:::
+:::
+
+## What Is a Basis Function?
+
+::: callout-note
+## Basis Functions as Transformations
+
+Consider the predictive feature $x$. We transform this feature using the [**basis function**]{style="color: red;"} $B_j(x)$, which is specified ahead of the learning process. This function can be used to introduce curvature into a model.
+
+A **basis set** is a set of different basis functions each applied to $x$ and added together to approximate a complex function so that
+
+$$
+y_i = \beta + \omega_1 B_1(x_i) + \omega_2 B_2(x_i) + \cdots + \omega_K B_K(x_i) + \varepsilon_i
+$$ {#eq-basis}
+:::
+
+::: notes
+The basis function can be anything, but often we use (1) polynomials; (2) polynomial splines; and (3) natural splines. Smoothing splines are another option but are currently not implemented in `tidymodels`.
+:::
+
+## Polynomial Regression
+
+::: callout-note
+## Basis Function
+
+For an integer $j$,
+
+$$
+B_j(x) = x^j
+$$ {#eq-polynomial}
+:::
+
+The resulting regression model takes the form of
+
+$$
+y_i = \beta + \sum_{j=1}^K \omega_j x_i^j + \varepsilon_i
+$$
+
+where $K$ is set by the researcher.
+
+::: notes
+Here, $K$ can be set through cross-validation or by theory.
+:::
+
+## Variants of Polynomials
+
+-   Raw polynomials take the form of $x^j$, since they simply transform the raw feature scores.
+
+-   Since this can induce multicollinearity, orthogonal polynomials are preferred.
+
+::: notes
+Orthogonal polynomials have the property that the cross-products defined by the numerical coefficients of their terms add to zero. Conversion of orthogonal components is complex but illustrated in the code.
+:::
+
+## Piece-Wise Polynomial Regressions
+
+-   The polynomial is applied to the whole of age range.
+
+-   What if we believe that different polynomials apply to different ranges?
+
+-   For instance, we divide age into two regions such as $\text{age} < 50$ and $\text{age} \geq 50$.
+
+-   We can now apply two different polynomials, for instance,
+
+    $$
+    \begin{split}
+    y_i|\text{age} < 50 &\approx \beta_1 + \omega_{11} \text{age}_i + \omega_{12} \text{age}_i^2 \\
+    y_i|\text{age} \geq 50 &\approx \beta_2 + \omega_{21} \text{age}_i + \omega_{22} \text{age}_i^2 
+    \end{split}
+    $$
+
+-   The problem is that this setup creates a jump at age = 50.
+
+-   Moreover, there are other discontinuities at the cutoff of 50.
+
+## Polynomial Splines
+
+::: columns
+::: {.column width="50%"}
+-   Imagine we impose $k$ cutoff points or **knots** that divide a predictive feature into $k+1$ regions.
+
+-   A [**polynomial spline**]{style="color: red;"} or $B$-spline of degree $d$ is a piece-wise polynomial, such that at each knot we impose continuity on the derivatives up to degree $d$.
+:::
+
+::: {.column width="50%"}
+```{r}
+#| echo: false
+library(splines)
+bs_fit1 <- lm(wage ~ bs(age, knots = c(50), degree = 3), data = Wage)
+bs_fit2 <- lm(wage ~ bs(age, knots = c(50), degree = 6), data = Wage)
+bs_fit3 <- lm(wage ~ bs(age, knots = c(20,35,50,65), degree = 3), data = Wage)
+bs_fit4 <- lm(wage ~ bs(age, knots = c(20,35,50,65), degree = 6), data = Wage)
+age_lims <- range(Wage$age)
+age_grid <- seq(from = age_lims[1], to = age_lims[2])
+bs_pred1 <- predict(bs_fit1,
+                   newdata = list(age = age_grid),
+                   se = FALSE)
+bs_pred2 <- predict(bs_fit2,
+                   newdata = list(age = age_grid),
+                   se = FALSE)
+bs_pred3 <- predict(bs_fit3,
+                   newdata = list(age = age_grid),
+                   se = FALSE)
+bs_pred4 <- predict(bs_fit4,
+                   newdata = list(age = age_grid),
+                   se = FALSE)
+set.seed(12691)
+e <- rnorm(length(age_grid), 0, 5)
+wage1 <- bs_pred1 + e
+wage2 <- bs_pred2 + e
+wage3 <- bs_pred3 + e
+wage4 <- bs_pred4 + e
+type <- c(rep("1_3",length(age_grid)), rep("1_6,",length(age_grid)),
+          rep("4_3",length(age_grid)), rep("4_6", length(age_grid)))
+age <- rep(age_grid,4)
+wage <- c(wage1,wage2,wage3,wage4)
+pred <- c(bs_pred1,bs_pred2,bs_pred3,bs_pred4)
+plot_df <- cbind.data.frame(type, age, wage,pred)
+ggplot(plot_df, aes(x = age, y = wage)) +
+  geom_point(size = 3, col = "#fde725") +
+  geom_line(aes(y = pred), linewidth = 1.5, col = "#21918c") +
+  facet_wrap(~type) +
+  labs(x = "Age", y = "Wage", caption = "Simulated data. Notation is k_d",
+       title = "Polynomial Splines") +
+  theme_bw()
+```
+:::
+:::
+
+::: notes
+For the cubic spline, the 0th (original function), 1st, and 2nd derivatives are continuous at each knot.
+:::
+
+## Degrees of Freedom in B-Splines
+
+-   Instead of tuning $d$ and $k$ separately, often we tune the [**degrees-of-freedom**]{style="color: red;"}.
+
+-   For $B$-splines, $df = d + k$.
+
+-   The default is typically the cubic spline, meaning that $df = 3 + k$.
+
+-   We typically set $df$ through re-sampling.
+
+::: notes
+With $k$ knots, there are $k+1$ segments. Including constants, a $B$-spline has $d+1$ parameters. Thus, the number of estimated parameters is $(d+1)(k+1)$. However, at each knot there are $d$ constraints. $(d+1)(k+1) - dk = d + k + 1$. For degrees of freedom, we typically drop the global constant, resulting in $df = d + k$.
+:::
+
+## A Problem with B-Splines
+
+::: columns
+::: {.column width="50%"}
+```{r}
+#| echo: false
+bs_fit <- lm(wage ~ bs(age, knots = c(20,35,50,65), degree = 3), data = Wage)
+bs_pred = predict(bs_fit, newdata = list(age = age_grid), se = TRUE)
+se_bands <- with(bs_pred, cbind("upper" = fit + 1.96 * se.fit,
+                                "lower" = fit - 1.96 * se.fit))
+ggplot() +
+  geom_point(data = Wage, aes(x = age, y = wage),
+             size = 3, col = "#fde725") +
+  geom_line(aes(x = age_grid, y = bs_pred$fit), linewidth = 1.5,
+            col = "#21918c") +
+  geom_ribbon(aes(x = age_grid, ymin = se_bands[,"lower"],
+                  ymax = se_bands[,"upper"]), col = "#21918c",
+              alpha = 0.3) +
+  labs(x = "Age", y = "Wage") +
+  theme_bw()
+```
+:::
+
+::: {.column width="50%"}
+-   We see a lot of variance at the ends of the cubic spline.
+
+-   This has to do with a lack of constraint at the end points.
+
+-   We can reduce this variance through the use of [**natural splines**]{style="color: red;"}.
+
+-   Here the functional form becomes linear below the smallest knot and above the largest knot.
+:::
+:::
+
+::: notes
+Natural cubic splines have $k + 1$ degrees of freedom.
+:::
+
+## Generalized Additive Models
+
+-   We can combine various functions for different predictive features into an additive model:
+
+    $$
+    y_i \approx \beta + \sum_{j=1}^P f_j(x_{ij})
+    $$ where $f_j(.)$ is a spline with its own set of weights.
+
+-   This is known as a [**generalized additive model**]{style="color: red;"} or GAM [@hastie1987Generalized].
+
+# Practice
+
+## Example 1: Polynomial Regression Without Tuning
+
+::: panel-tabset
+### Objective
+
+The objective is to fit a polynomial regression of degree 3 to the age predictor in a wage model.
+
+### Data
+
+```{r}
+#| message: false
+library(ISLR)
+library(tidymodels)
+tidymodels_prefer()
+data(Wage)
+set.seed(1671)
+wage_split <- initial_split(Wage, prop = 0.75, strata = wage)
+training_set <- training(wage_split)
+test_set <- testing(wage_split)
+```
+
+### Pre-Process
+
+```{r}
+# Standardization is not necessary but often useful
+model_recipe <- recipe(wage ~ age, data = training_set) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_poly(age, degree = 3)
+```
+
+### Training
+
+```{r}
+poly_spec <- linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("lm")
+model_flow <- workflow() %>%
+  add_model(poly_spec) %>%
+  add_recipe(model_recipe)
+wage_fit <- fit(model_flow, data = training_set)
+tidy(wage_fit)
+```
+
+### Performance
+
+```{r}
+wage_fit %>%
+  predict(test_set) %>%
+  bind_cols(test_set) %>%
+  metrics(truth = wage, estimate = .pred)
+```
+:::
+
+## Example 2: Natural Splines with Tuning
+
+::: panel-tabset
+### Objective
+
+-   Let us train a linear model of wage with age, education, and year of data collection as predictive features.
+
+-   We create dummy variables for education.
+
+-   We use natural splines for age and year.
+
+-   We tune the degrees of freedom for those splines.
+
+### Recipe
+
+```{r}
+wage_recipe <- recipe(wage ~ age + education + year,
+                      data = training_set) %>%
+  step_normalize(c(age,year)) %>%
+  step_dummy(education) %>%
+  step_ns(age, deg_free = tune("age")) %>%
+  step_ns(year, deg_free = tune("year"))
+extract_parameter_set_dials(wage_recipe)
+```
+
+### CV
+
+```{r}
+set.seed(20)
+cv_folds <- vfold_cv(training_set, v = 10, repeats = 3)
+```
+
+### Grid
+
+```{r}
+# Full factorial
+ns_grid <- crossing(
+  "age" = 1:5,
+  "year" = 1:5
+)
+ns_grid
+```
+
+### Model+Flow
+
+```{r}
+wage_spec <- linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("lm")
+first_flow <- workflow() %>%
+  add_model(wage_spec) %>%
+  add_recipe(wage_recipe)
+```
+
+### Tuning
+
+```{r}
+set.seed(1671)
+ns_tune <- first_flow %>%
+  tune_grid(cv_folds, grid = ns_grid, metrics = metric_set(rsq))
+select_best(ns_tune)
+```
+
+### Final
+
+```{r}
+final_flow <- first_flow %>%
+  finalize_workflow(select_best(ns_tune))
+final_est <- final_flow %>%
+  fit(training_set)
+tidy(final_est)
+```
+:::
+
+## Example 2: Effect Plot
+
+::: panel-tabset
+### GAM
+
+```{r}
+#| eval: false
+library(gam)
+gam_fit <- gam(wage ~ education + ns(age, 5) + ns(year, 1),
+               data = training_set)
+par(mfrow = c(1,3))
+plot(gam_fit, se = FALSE, col = "#386cb0")
+```
+
+### Plot
+
+```{r}
+#| echo: false
+#| message: false
+library(gam)
+gam_fit <- gam(wage ~ education + ns(age, 5) + ns(year, 1),
+               data = training_set)
+par(mfrow = c(1,3))
+plot(gam_fit, se = FALSE, col = "#21918c", lwd = 2)
+```
+:::
+
+## References
+
+::: reference
+:::
