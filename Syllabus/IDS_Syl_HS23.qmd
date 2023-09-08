@@ -1,0 +1,208 @@
+---
+title: "INTRODUCTION TO DATA SCIENCE"
+subtitle: "SYLLABUS HS23"
+author: "Prof. Dr. Marco Steenbergen"
+date: today
+code-fold: true
+title-block-banner: true
+toc: true
+bibliography: /Users/poli-glot/Documents/Tools/references.bib
+format:
+  html:
+    self-contained: true
+    theme: journal
+editor: visual
+---
+
+# Logistics
+
+> **We meet Wednesday 10.15-12.00 in AND-2-02. Office hours are Wednesday 13.00-15.00 or by appointment. You can get in touch with the instructor via [steenbergen\@ipz.uzh.ch](steenbergen@ipz.uzh.ch) or via the OLAT forum.**
+
+# Description
+
+This course is a comprehensive overview of machine learning with a focus on the social sciences. Machine learning comes in several flavors, including (1) unsupervised machine learning; (2) supervised machine learning; and (3) ensemble learning. In this course, we shall touch on all those aspects. The general goal is to give you a broad overview of the field and a strong sense of how these powerful techniques can be put to good social scientific use.
+
+The course mixes lecture and in-class and take-home exercise, so that there is never much time between the explanation of a concept or technique and you using it. We shall do all programming in R. While many courses of this kind focus heavily on predictive performance, we also place emphasis on interpretation. A socially responsible use of predictive learning requires that we can assess and explain the predictions that are being made, even for highly complex algorithms. Great strides have been made in this area and we shall cover them in the course.
+
+# Objectives
+
+By the end of the course, you should be able to
+
+1.  understand the different uses of machine learning in the social sciences.
+2.  implement a machine learning workflow.
+3.  recognize and remedy machine learning errors.
+4.  use re-sampling techniques for tuning algorithms.
+5.  select and interpret an appropriate performance metric.
+6.  interpret how an algorithm generates predictions.
+7.  choose an appropriate machine learning algorithm.
+
+# Prerequisites
+
+While there are no formal prerequisites for the course, strong R programming skills will be of great advantage. At a minimum, you should be able to read in data in various formats, manipulate data using the `tidyverse`, and create plots using `ggplot`.
+
+# Materials
+
+## Textbook
+
+The main textbook is:
+
+> @james2015Introduction
+
+In the syllabus, it is indicated with \[M\] for main.
+
+## Auxiliary Readings
+
+For some topics, auxiliary readings will be listed. These are indicated with \[A\].
+
+## Software
+
+Students should install R and RStudio on their computer. Installation instructions can be found at [Hands-On Programming in R](https://rstudio-education.github.io/hopr/starting.html). Please make sure that both R and RStudio are updated to their latest versions. Should you experience any difficulties, then we can address them on the 1^st^ day of class or you can email me before the start of the course.
+
+At the start of the semester, you will be provided with a script that installs all required packages. If you want to get a head start, please install the `tidymodels` package; this will be our main modeling environment.
+
+# Take-Home Exercises
+
+After each lecture, a take-home exercise will be made available. Several days later, the answer key to the homework will be uploaded. Working through those exercises is excellent preparation for the homework assignments and also helps with the final paper.
+
+# Requirements
+
+## Homework
+
+Three homework assignments (HA) contribute 45% of the final grade (15% each). Their due dates are:
+
+-   **October 18**
+
+-   **November 15**
+
+-   **December 20**
+
+The homework assignments should be completed individually.
+
+## Final Paper
+
+A final paper (SA) contributes 55% of the final grade and is due on **January 17, 2024**. This paper provides an opportunity to apply machine learning to data of your choice. The formal requirement for the paper is that it should be no longer than 4000 words, including references but excluding graphs and tables. The paper should have the following sections: (1) an introduction where you describe the problem you seek to solve; (2) a description of the algorithm you choice to employ and a justification of why you chose it; (3) a discussion of the data, including descriptive statistics and graphs; (4) results, including the selection of tuning parameters and performance metrics; (5) interpretation, including variable importance and local interpretations for at least two instances; and (6) conclusions in the form of answers to the problem you posed in the introduction.
+
+In terms of grading, the following criteria will be applied:
+
+-   Correct choice of an algorithm, proper description of the algorithm, and compelling justification \[20%\].
+
+-   Proper data screening, data cleaning, and selection of a pre-processing strategy \[20%\].
+
+-   Proper implementation of the algorithm and the pre-processing steps \[20%\].
+
+-   Solid discussion of the choice of tuning parameters and of model performance \[20%\].
+
+-   Correct interpretation of the results \[20%\].
+
+You should format the paper as a Quarto document. A template will be made available.
+
+## Final Grade
+
+The homework assignments and final paper will be graded on a 0-100 scale. The final score will be computed as
+
+$$
+\text{Score} = 0.15 \times \text{HA1} + 0.15 \times \text{HA2} + 0.15 \times \text{HA3} + 0.55 \times \text{SA}
+$$
+
+A passing grade requires a score of 60 or better.
+
+# Schedule
+
+## Module I: Foundations and Learning for Regression Tasks
+
+### September 20
+
+**Topics:** (1) the logic of machine learning; (2) machine learning workflows; (3) regression analysis as machine learning; and (4) an introduction to `tidymodels`.
+
+**Readings:** @james2015Introduction, chapters 2-3 and 5, \[M\].
+
+### September 27
+
+**Topics:** (1) errors in supervised machine learning; (2) bias-variance trade-off; (3) principal components regression and partial least squares; (4) regularization; (5) tuning parameters; and (6) re-sampling strategies.
+
+**Readings:** (1) @james2015Introduction, chapter 6 and chapter 10, sections 10.1-10.2, [M]; (2) @molinaro2005Prediction, [A].
+
+### October 4
+
+**Topics:** (1) base functions; (2) splines; and (3) generalized additive models.
+
+**Readings:** @james2015Introduction, chapter 7, \[M\].
+
+## Module II: Classifiers
+
+### October 11
+
+**Topics:** (1) lazy learners; (2) $k$-nearest neighbors; (3) logistic regression; and (4) imbalanced data.
+
+**Readings:** (1) @james2015Introduction, chapter 4, sections 4.1-4.3, [M]; (2) @wang2021Review, [A].
+
+### October 18
+
+**Topics:** (1) probabilistic learners; (2) the naive Bayes algorithm; (3) decision boundaries; (4) linear discriminant analysis; and (5) quadratic discriminant analysis.
+
+**Readings:** (1) @granik2017Fake, [A]; (2) @ghojogh2019Linear, [A].
+
+### October 25
+
+**Topics:** (1) greedy learners; (2) decision trees; (3) C5.0; (4) cubist model trees; and (5) classification and regression trees.
+
+**Readings:** @james2015Introduction, chapter 8, section 8.1, \[M\].
+
+## Module III: Ensemble Learners
+
+### November 1
+
+**Topics:** (1) ensemble learning basics; (2) bagging; (3) random forests; and (4) conditional random forests.
+
+**Readings:** (1) @james2015Introduction, chapter 8, sections 8.2.1-8.2.2, [M]; (2) @breiman1996Bagging, [A].
+
+### November 8
+
+**Topics:** (1) adaptive boosting; (2) extreme gradient boosting; and (3) stacking learners.
+
+**Readings:** (1) @james2015Introduction, chapter 8, section 8.2.3, [M]; (2) @breiman1996Stacked, [A].
+
+## Module IV: Black-Box Algorithms and Interpretable Machine Learning
+
+### November 15
+
+**Topics:** (1) linear support vector machines for classification; (2) soft margins; and (3) support vector regression.
+
+**Readings:** (1) @james2015Introduction, chapter 9, sections 9.1-9.2, [M]; (2) @smola2004Tutorial, [A].
+
+### November 22
+
+**Topics:** (1) kernel trick; (2) SVM kernels; (3) nonlinear decision boundaries.
+
+**Readings:** @james2015Introduction, chapter 9, section 9.3, \[M\].
+
+### November 29
+
+**Topics:** (1) logic of artificial neural networks; (2) activation functions; (3) single-layer perceptrons; and (4) the back-propagation algorithm.
+
+**Readings:** @goodfellow2016Deep, [chapter 6](https://www.deeplearningbook.org/contents/mlp.html), \[A\].
+
+### December 6
+
+**Topics:** (1) multi-layer perceptrons; (2) weight decay; (3) dropout layers; and (4) interpretable machine learning.
+
+**Readings:** @goodfellow2016Deep, [chapter 7](https://www.deeplearningbook.org/contents/regularization.html), \[A\].
+
+## Module V: Cluster Analysis
+
+### December 13
+
+**Topics:** (1) hierarchical cluster analysis; and (2) $k$-means clustering.
+
+**Readings:** @james2015Introduction, chapter 10, section 10.3, \[M\].
+
+### December 20
+
+**Topics:** (1) the DBSCAN algorithm; and 92) Gaussian finite mixture models for clustering.
+
+**Readings:** (1) @rehman2014DBSCAN, [A]; (2) @scrucca2016Identifying, [A].
+
+# References
+
+::: {#refs}
+:::

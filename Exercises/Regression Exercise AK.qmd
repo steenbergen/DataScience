@@ -1,0 +1,309 @@
+---
+title: "REGRESSION EXERCISE---ANSWER KEY"
+code-fold: true
+title-block-banner: true
+format:
+  html:
+    self-contained: true
+    theme: journal
+editor: visual
+bibliography: /Users/poli-glot/Documents/Tools/references.bib
+---
+
+# Answers
+
+## Problem 1
+
+> **Screen the data and make some decisions about possible transformations.**
+
+We begin by loading the data into the object `BostonHousing2`. We then create a new data frame `work_df` containing only the relevant features. Here, I kept the variable `tract`, which I shall later assign the role of an identifier.
+
+```{r}
+#| message: false
+library(mlbench)
+library(tidyverse)
+data("BostonHousing2")
+work_df <- BostonHousing2 %>%
+  select(-c(town, lon, lat, medv))
+```
+
+The meaning of the features is as follows: (1) `tract` = census tract; (2) `crim` = per capita crime rate by town; (3) `zn` = proportion of residential land zoned for lots over 25 thousand square feet; (4) `indus` = proportion of non-retail business acres per town; (5) `chas` = 1 if tract bounds the Charles River and 0 otherwise; (6) `nox` = nitric oxides concentration (parts per 10 million); (7) `rm` = average number of rooms per dwelling; (8) `age` = proportion of owner-occupied units built prior to 1940; (9) `dis` = weighted distances to 5 Boston employment centers; (10) `rad` = index of accessibility to radial highways; (11) `tax` = full-value property tax rate per USD10 thousand; (12) `pratio` = pupil-teacher ratio per town; (13) `b` = scaled measure of the proportion of African-Americans by town; (14) `lstat` = percentage of lower-status population; and (15) `cmedv` =corrected median value of owner-occupied homes in USD1 thousand.
+
+There are no missing values in the data frame, meaning that we can skip this aspect of the screening workflow.
+
+We can use `skimr` to obtain a first impression of the data. The relative locations of the 1st, 2nd (median), and 3rd quartile suggest considerable skewness on a number of features, including positive skews on `cmedv`, `crim`, `zn`, `dis`, and `rad`, and negative skewness on `b`.
+
+```{r}
+#| message: false
+library(skimr)
+skimmed <- skim(work_df)
+yank(skimmed, "numeric")
+```
+
+The skewness also becomes clear when we visualize the densities over the features. For the numeric labels we obtain the following distribution
+
+```{r}
+ggplot(work_df, aes(x = cmedv)) +
+  geom_density(stat = "density", color = "#ef3b2c",
+               fill = "#ef3b2c", linewidth = 1, alpha = 0.65) +
+  xlab("Median Housing Value") +
+  ylab("Density") +
+  theme_bw()
+```
+
+For the predictive features, the densities are as follows. Here, we see that `indus`, `rad`, and `tax` have bi-modal distributions.
+
+```{r}
+#| message: false
+library(gridExtra)
+p1 <- ggplot(work_df, aes(x = crim)) +
+  geom_density(stat = "density", color = "#ef3b2c",
+               fill = "#ef3b2c", linewidth = 1, alpha = 0.65) +
+  xlab("Crime") +
+  ylab("Density") +
+  theme_bw()
+p2 <- ggplot(work_df, aes(x = zn)) +
+  geom_density(stat = "density", color = "#ef3b2c",
+               fill = "#ef3b2c", linewidth = 1, alpha = 0.65) +
+  xlab("Zoning") +
+  ylab("Density") +
+  theme_bw()
+p3 <- ggplot(work_df, aes(x = indus)) +
+  geom_density(stat = "density", color = "#ef3b2c",
+               fill = "#ef3b2c", linewidth = 1, alpha = 0.65) +
+  xlab("Industry") +
+  ylab("Density") +
+  theme_bw()
+p4 <- ggplot(work_df, aes(x = nox)) +
+  geom_density(stat = "density", color = "#ef3b2c",
+               fill = "#ef3b2c", linewidth = 1, alpha = 0.65) +
+  xlab("Pollution") +
+  ylab("Density") +
+  theme_bw()
+p5 <- ggplot(work_df, aes(x = rm)) +
+  geom_density(stat = "density", color = "#ef3b2c",
+               fill = "#ef3b2c", linewidth = 1, alpha = 0.65) +
+  xlab("Rooms") +
+  ylab("Density") +
+  theme_bw()
+p6 <- ggplot(work_df, aes(x = age)) +
+  geom_density(stat = "density", color = "#ef3b2c",
+               fill = "#ef3b2c", linewidth = 1, alpha = 0.65) +
+  xlab("Age") +
+  ylab("Density") +
+  theme_bw()
+p7 <- ggplot(work_df, aes(x = dis)) +
+  geom_density(stat = "density", color = "#ef3b2c",
+               fill = "#ef3b2c", linewidth = 1, alpha = 0.65) +
+  xlab("Distance") +
+  ylab("Density") +
+  theme_bw()
+p8 <- ggplot(work_df, aes(x = rad)) +
+  geom_density(stat = "density", color = "#ef3b2c",
+               fill = "#ef3b2c", linewidth = 1, alpha = 0.65) +
+  xlab("Highways") +
+  ylab("Density") +
+  theme_bw()
+p9 <- ggplot(work_df, aes(x = tax)) +
+  geom_density(stat = "density", color = "#ef3b2c",
+               fill = "#ef3b2c", linewidth = 1, alpha = 0.65) +
+  xlab("Taxes") +
+  ylab("Density") +
+  theme_bw()
+p10 <- ggplot(work_df, aes(x = ptratio)) +
+  geom_density(stat = "density", color = "#ef3b2c",
+               fill = "#ef3b2c", linewidth = 1, alpha = 0.65) +
+  xlab("Pupil-Teacher Ratio") +
+  ylab("Density") +
+  theme_bw()
+p11 <- ggplot(work_df, aes(x = b)) +
+  geom_density(stat = "density", color = "#ef3b2c",
+               fill = "#ef3b2c", linewidth = 1, alpha = 0.65) +
+  xlab("Race") +
+  ylab("Density") +
+  theme_bw()
+p12 <- ggplot(work_df, aes(x = lstat)) +
+  geom_density(stat = "density", color = "#ef3b2c",
+               fill = "#ef3b2c", linewidth = 1, alpha = 0.65) +
+  xlab("Lower Status") +
+  ylab("Density") +
+  theme_bw()
+grid.arrange(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12,
+             ncol = 3)
+```
+
+We now have to decide what to do about the bi-modal and skewed distributions. Skewness can be addressed by performing a Box-Cox [@box1964Analysis] or Yeo-Johnson [@yeo2000New] transformation. This can be built into a recipe and I will do that in Part 3 of the exercise. Performing transformations of this kind is important not just to render the feature distribution more symmetric but also to reduce the impact of outliers.
+
+Bi-modality cannot be addressed through a recipe. We could divide each of the variables `indus`, `rad`, and `tax` into two pieces, each with a single mode. We could then create interactions that select the proper feature for a particular instance. All of this would have to be done prior to using tidymodels. However, this does not necessarily bring many advantages. Bi-modal distributions are not like skewed distributions, where we worry about outliers that can turn into high-influence points for the location of the regression line. Because bi-modality does not introduce any risks for learning, I refrain from addressing it.
+
+## Problem 2
+
+> **Split the data into training and test sets. How many training and test instances are being generated?**
+
+For this exercise, I will generate 70 percent training instances and 30 percent test instances. This is a little more than in the lecture notes, but we will be performing some transformations and this adds to the burden of learning. In lieu of simple random sampling, I use stratified random sampling with strata being defined in terms of the median housing value.
+
+```{r}
+#| message: false
+library(tidymodels)
+tidymodels_prefer()
+set.seed(1234)
+data_split <- initial_split(work_df, prop = 0.70, strata = cmedv)
+train <- training(data_split)
+test <- testing(data_split)
+data_split
+```
+
+The split results in 352 training and 154 test instances.
+
+## Problem 3
+
+> **Train a linear regression model on the training set. What are the estimates of the coefficients?**
+
+For this task, we have to transform the skewed features. As a rule, we do this inside of a recipe. The exception to that rule are the labels. We usually transform those outside of a recipe because the outcome is usually not present when applying a recipe to new data, including the test set.
+
+For the median housing value, I decided to apply a transformation with log base 10. This greatly reduces the skewness and is easy to interpret. Thus, we now get skewness statistics of
+
+```{r}
+library(moments)
+train <- train %>%
+  mutate(log_cmedv = log10(cmedv)) %>%
+  select(-cmedv)
+test <- test %>%
+  mutate(log_cmedv = log10(cmedv)) %>%
+  select(-cmedv)
+skewness(train$log_cmedv)
+```
+
+for the training set and
+
+```{r}
+skewness(test$log_cmedv)
+```
+
+for the test set. Notice that the transformation should be applied to both the training and test set.
+
+For the predictive features, I build the transformations into a recipe. To reduce the skewness in `crim`, `dis`, `rad`, and `b`, I will apply the Box-cox [@box1964Analysis] transformation:
+
+$$
+z^* = \left \{ \begin{array}{ll} \ln (z) & \text{if } \lambda = 0 \\
+\frac{z^\lambda - 1}{\lambda} & \text{otherwise} \end{array} \right .
+$$
+
+This transformation requires that the original variable scores, $z$, are strictly positive. While that is true of the aforementioned features, it is not of `zn`, which takes on the value 0 for some instances. Here, we use the transformation proposed by @yeo2000New:
+
+$$
+z^* = \left \{ \begin{array}{ll} \ln (z + 1) & \text{if } \lambda = 0, z \geq 0 \\ \frac{(z + 1)^\lambda - 1}{\lambda} & \text{if } \lambda \neq 0, z \geq 0 \\ -\ln (-z + 1) & \text{if } \lambda = 2, z < 0 \\ -\frac{(-z + 1)^{2 - \lambda} - 1}{2 - \lambda} & \text{if } \lambda \neq 2, z<0 \end{array} \right .
+$$
+
+The recipe is now
+
+```{r}
+housing_rec <- recipe(log_cmedv ~ ., data = train) %>%
+  update_role(tract, new_role = "id") %>%
+  step_BoxCox(crim, dis, rad, b) %>%
+  step_YeoJohnson(zn)
+housing_rec
+```
+
+Notice that we assigned a new role to `tract`, namely that of an identifier or id.
+
+We now specify the model we want to estimate:
+
+```{r}
+housing_spec <- linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("lm")
+housing_spec
+```
+
+The next step is to generate a workflow that integrates the model specification and recipe:
+
+```{r}
+housing_wf <- workflow() %>%
+  add_recipe(housing_rec) %>%
+  add_model(housing_spec)
+housing_wf
+```
+
+What is left is to estimate the model and to show he parameter estimates.
+
+```{r}
+housing_fit <- fit(housing_wf, train)
+tidy(housing_fit)
+```
+
+The coefficients shown here are for the transformed predictors.
+
+### Aside
+
+We do not actually get to see what transformation parameters were applied to the training data. We can get that information as follows:
+
+```{r}
+temp <- prep(housing_rec, training = train)
+tidy(temp, number = 1)
+tidy(temp, number = 2)
+```
+
+## Problem 4
+
+> **How well does the regression model account for median housing values in the test set?**
+
+The first ten predicted values are
+
+```{r}
+housing_fit %>%
+  predict(test) %>%
+  bind_cols(test)
+```
+
+The predictive performance is given by
+
+```{r}
+housing_fit %>%
+  predict(test) %>%
+  bind_cols(test) %>%
+  metrics(truth = log_cmedv, estimate = .pred)
+```
+
+We explain about 74 percent of the variance in the logged median housing values. The RMSE is roughly 0.09, which amounts to roughly USD1230 on the original scale. This does not appear to be excessive.
+
+## Problem 5
+
+> @harrison1978Hedonic **were particularly interested in the effect of nitric oxide emissions on housing values. Create and interpret the partial dependence plot for this feature.**
+
+We use `DALEX` to generate the pdp-plot for us. First, we create the explainer:
+
+```{r}
+#| message: false
+library(DALEXtra)
+housing_explainer <- explain_tidymodels(
+  model = housing_fit,
+  data = test,
+  y = test$log_cmedv
+)
+```
+
+Next, we generate the plot for `nox`:
+
+```{r}
+pdp_nox <- model_profile(
+  housing_explainer,
+  variables = "nox",
+  N = NULL
+)
+as_tibble(pdp_nox$agr_profiles) %>%
+  ggplot(aes(`_x_`, `_yhat_`)) +
+  geom_line(linewidth = 1.2, col = "#ef3b2c", alpha = 0.8) +
+  geom_rug(sides = "b") +
+  labs(
+    x = "Pollution",
+    y = "Median Housing Value (log10)",
+    color = NULL
+  ) +
+  theme_bw()
+```
+
+Keep in mind that the regression is linear in logged median housing values, but not in original housing values.
+
+::: references
+:::

@@ -1,0 +1,29 @@
+---
+title: "REGRESSION EXERCISE"
+title-block-banner: true
+format:
+  html:
+    self-contained: true
+    theme: journal
+editor: visual
+bibliography: /Users/poli-glot/Documents/Tools/references.bib
+---
+
+# Overview
+
+The package `mlbench` contains a number of machine learning data sets. One of those is `BostonHousing2`, which is based on @harrison1978Hedonic. The labeled outcome in the data set is `cmedv`, the median housing value in a census tract in the greater Boston area. (Note: there also is an outcome called `medv`, but this has not been corrected statistically and should not be used.) There are many predictive features. However, for purposes of the exercise, it makes little sense to use `tract`, `lon`, and `lat`. The first feature is just a tract identifier, whereas `lon` and `lat` simply encode the longitude and latitude of the tract. You could use `town` as a predictor, but this would have to be turned into a set of dummies first. For this first exercise on the regression model, I suggest refraining from doing this.
+
+# Problem Set
+
+1.  Screen the data and make some decisions about possible transformations.
+
+2.  Split the data into training and test sets. How many training and test instances are being generated?
+
+3.  Train a linear regression model on the training set. What are the estimates of the coefficients?
+
+4.  How well does the regression model account for median housing values in the test set?
+
+5.  @harrison1978Hedonic were particularly interested in the effect of nitric oxide emissions on housing values. Create and interpret the partial dependence plot for this feature.
+
+::: references
+:::

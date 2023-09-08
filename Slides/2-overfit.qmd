@@ -1,0 +1,1199 @@
+---
+title: "AVOIDING OVER-FITS:"
+subtitle: "Principal Components, Partial Least Squares, Regularization, and Re-Sampling"
+author: "Marco R. Steenbergen"
+institute: "University of Zurich"
+format:
+  revealjs:
+    self-contained: true
+    fig-format: retina
+    toc: true
+    toc-depth: 1
+    number-sections: false
+    toc-title: "In this lecture"
+    theme: [default, "sydney.scss"]
+    code-line-numbers: false
+    slide-number: c
+    scrollable: false
+    pdf-max-pages-per-slide: 1
+    history: false # don't add each slide to browser history
+bibliography: /Users/poli-glot/Documents/Tools/references.bib
+csl: apa-old-doi-prefix.csl
+execute:
+  echo: true
+---
+
+# Machine Learning Errors
+
+## Error Sources
+
+1.  Irreducible error.
+2.  Bias error.
+3.  Variance error.
+
+## Irreducible Error
+
+-   Error that cannot be eliminated, not even through fine-tuning or choosing a different algorithm.
+
+-   Captured by $\varepsilon$.
+
+-   Sources include
+
+    -   Missing predictive features.
+
+    -   Measurement error.
+
+    -   Random shocks.
+
+-   The remedy is to collect more and better data.
+
+::: notes
+Data collection can be costly. This is why feature selection is important. It allows us to focus on measuring those features that really matter.
+:::
+
+## Bias Error
+
+-   Bias means that we systematically err in our predictions.
+
+-   Common causes include:
+
+    -   Stopping training too early---especially relevant for complex algorithms such as neural networks.
+
+    -   Under-fitting the data.
+
+-   An **under-fit** means that we miss elements of the data generating process---our model is not sufficiently complex.
+
+-   Remedies are non-interference with the learning process and increasing model complexity.
+
+## Variance Error
+
+-   The model does not generalize well to new data; small changes in the data have large consequences for performance.
+
+-   The major cause of variance error is **over-fitting**, which means any of the following:
+
+    -   The model is too complex.
+
+    -   The model is too flexible.
+
+    -   We capitalize on chance.
+
+-   The remedy is to reduce model complexity.
+
+::: notes
+The problem of variance error should not be underestimated. This is one reason why algorithms go wrong when they are deployed.
+:::
+
+## An Example of Under- and Over-Fitting
+
+![](Images/overunderfit.png){fig-align="center"}
+
+::: {style="font-size: 75%"}
+**Source:** [Seema Singh](https://towardsdatascience.com/understanding-the-bias-variance-tradeoff-165e6942b229)
+:::
+
+## Total Error and the Bias-Variance Trade-Off
+
+::: columns
+::: {.column width="50%"}
+![](Images/totalerror.jpg){fig-align="center"}
+:::
+
+::: {.column width="50%"}
+-   Total error is $B^2 + V + I$.
+
+-   To reduce $B$, we may have to increase model complexity, but this could increase $V$.
+
+-   To reduce $V$, we may have to reduce model complexity, but this could increase $B$.
+
+-   The goal is to find the sweet spot.
+:::
+:::
+
+::: notes
+The bias-variance trade-off is common in statistics.
+:::
+
+## Reducing the Risk of Over-Fitting
+
+-   We know how to add complexity:
+
+    -   Add more features.
+
+    -   Add nonlinear effects of and interactions between existing features.
+
+-   But how do we make models simpler?
+
+-   One approach is to combine features:
+
+    -   Principal components.
+
+    -   Partial least squares.
+
+-   Another approach is to penalize for over-fitting $\rightarrow$ regularization.
+
+-   Both approaches involve tuning parameters.
+
+# Principal Component Analysis
+
+## What Is Principal Component Analysis?
+
+::: columns
+::: {.column width="50%"}
+-   Principal component analysis (PCA) is a data reduction technique.
+
+-   Consider the placement of German political parties on three issues $\rightarrow \mathbb{R}^3$.
+
+-   Is there a $\mathbb{R}^2$ or $\mathbb{R}^1$ space that adequately accounts for the data?
+:::
+
+::: {.column width="50%"}
+![](Images/despace.png){fig-align="center"}
+:::
+:::
+
+## What Does PCA Do?
+
+::: columns
+::: {.column width="50%"}
+![](Images/pca.png){fig-align="center"}
+
+::: {style="font-size: 75%"}
+**Source:** [Analytics Vidhya](https://www.analyticsvidhya.com/blog/2016/03/pca-practical-guide-principal-component-analysis-python/)
+:::
+:::
+
+::: {.column width="50%"}
+Transform a set of correlated features into a smaller set of **principal components** with the following properties:
+
+1.  They are orthogonal.
+2.  They are extracted in the order of the variance for which they account.
+:::
+:::
+
+::: notes
+The fact that PCA results in uncorrelated components can in its own right be useful, quite apart from any data reduction.
+:::
+
+## Extracting Principal Components
+
+-   Given the $P \times P$ covariance matrix $\boldsymbol{S}$, the **total variance** is equal to $T = \sum_{j=1}^P s_{jj}^2$.
+
+-   We perform the spectral decomposition
+
+    $$
+    \boldsymbol{S} = \boldsymbol{C} \boldsymbol{L} \boldsymbol{C}^\top = \sum_{j=1}^P \lambda_j \boldsymbol{c}_j \boldsymbol{c}_j^\top
+    $$
+
+-   Here,
+
+    -   $\boldsymbol{L}$ is a diagonal matrix of eigenvalues, whose elements are $\lambda_j$.
+
+    -   $\boldsymbol{C}$ is a $P \times P$ orthogonal matrix of eigenvectors or **loadings**, whose rows correspond to the features and whose columns correspond to the components.
+
+## Variance Accounted For and Data Reduction
+
+-   Mathematically, $\sum_{i=1}^P \lambda_i = T$.
+
+-   Thus, the $i$th component accounts for $100 \cdot \frac{\lambda_i}{\sum_i s_{ii}^2}$ percent of the total variance.
+
+-   We typically retain the $M < P$ components that account for most of the variance.
+
+-   We treat $M$ as a tuning parameter.
+
+## PCA as a Model
+
+-   Instance $i$'s score on the $m$th principal component is
+
+    $$
+    p_{im} = \sum_{p=1}^P c_{pm} x_{ip} 
+    $$ {#eq-pca1} where
+
+    -   $i$ indexes an instance
+
+    -   $m$ indexes a component
+
+    -   $p$ indexes the feature
+
+    -   $c_{pm}$ is the loading
+
+-   In matrix terms,
+
+    $$
+    \boldsymbol{P} = \boldsymbol{X} \boldsymbol{C}
+    $$ {#eq-pca2}
+
+::: notes
+**Important:** This is a different model from factor analysis. In PCA, $x \rightarrow p$. In factor analysis, $f \rightarrow x$.
+:::
+
+## Interpretation
+
+::: columns
+::: {.column width="\"50%"}
+-   We can use the loadings to make sense of the principal components.
+
+-   However, the loadings are *not* unique.
+
+-   We can account for the same portion of $T$ through arbitrary orthogonal transformations of $\boldsymbol{C}$ that we call **rotations.**
+
+-   Rotation is our friend---a carefully selected rotation can simplify the interpretation.
+:::
+
+::: {.column width="50%"}
+![](Images/despace2.png){fig-align="center"}
+:::
+:::
+
+::: notes
+The rotated components are the dashed axes. Note that the first axis now coincides with spending, making it easy to interpret the first component.
+:::
+
+## Illustration
+
+::: panel-tabset
+### Data
+
+```{r}
+#| echo: false
+#| message: false
+library(kableExtra)
+german_df <- data.frame(
+  EU = c(6.38,6.38,5.69,6.23,3.00,4.85,1.62),
+  spending = c(5.73,3.45,7.36,2.82,0.50,6.18,7.89),
+  immigration = c(5.73,3.91,3.60,2.09,4.00,7.45,9.30)
+)
+row.names(german_df) <- c("CDU", "SPD", "FDP", "Gruenen", "Linke", "AfD",
+"CSU")
+german_df %>%
+  kbl() %>%
+  kable_material(full_width = FALSE,"striped")
+```
+
+### Syntax
+
+```{r}
+pca_fit <- prcomp(german_df,
+                  scale = FALSE,
+                  center = TRUE,
+                  retx = FALSE)
+```
+
+### Results
+
+```{r}
+#| echo: false
+pca_fit
+```
+
+The first component explains 68.9% of the total variance, the second 26.1%, and the third 5.0%.
+
+### Rotation
+
+```{r}
+# Settling on M = 2 components
+pca_rotate <- varimax(pca_fit$rotation[,1:2])
+```
+
+### Interpretation
+
+```{r}
+#| echo: false
+pca_rotate$loadings
+
+```
+
+The 1st component is mostly about spending and thus **economic** in nature. The 2nd component is about open versus closed **borders**.
+
+### Scores
+
+```{r}
+# Done here by hand, but can be done more easily using the psych package.
+# Step 1: Extract original loadings for PC1 and PC2.
+L <- pca_fit$rotation[,1:2]
+# Step 2: Extract rotation matrix from varimax rotation.
+W <- pca_rotate$rotmat
+# Step 3: Re-create rotated loadings.
+M <- L %*% W
+# Step 4: Center the features.
+X_centered <- as.matrix(german_df) - colMeans(german_df)
+# Step 5: Generate scores.
+scores <- X_centered %*% M
+scores
+```
+:::
+
+## Selecting the Number of Components
+
+-   We somewhat haphazardly settled on 2 components based on explained variance.
+
+-   In machine learning, we would generally rely on **cross-validation** to find the optimal number of components from the perspective of predictive performance.
+
+# Tuning Parameters and Cross-Validation
+
+## Of Tuning Parameters
+
+-   A [**tuning parameter**]{style="color: red;"} (a.k.a. hyper-parameter) is a parameter that affects the operation of the algorithm but cannot be estimated from the data.
+
+-   Oftentimes, these tuning parameters concern model complexity.
+
+-   An example is $M$, the number of principal components to be retained.
+
+-   Although the modeler ultimately sets the value of the tuning parameter, it is possible to let the data speak to that decision $\rightarrow$ (cross-)validation.
+
+-   [**Re-sampling**]{style="color: red;"} is an out-of-sample method to assess whether results will generalize.
+
+::: notes
+Tuning parameters lend machine learning algorithms tremendous flexibility and power. In some algorithms, the number of those parameters can be extremely large. In `tidymodels`, tuning parameters can be part of pre-processing or models. Their are general tuning parameters that apply to a particular class of models, as well as engine-specific parameters.
+:::
+
+## Why Engage in Re-Sampling?
+
+-   The alternative is [**re-substitution**]{style="color: red;"}---measure performance on the same data used to optimize performance in the first place.
+
+-   The resulting error is known as the re-substitution error.
+
+-   Re-substitution errors over-estimate performance [@efron1983Estimating].
+
+-   This is why we look for the alternative of re-sampling.
+
+## An Overview of Re-Sampling Methods
+
+-   We can further sub-divide the training set using a number of re-sampling approaches:
+
+    1.  A further application of the split sample approach
+    2.  $k$-fold and other cross-validation methods
+    3.  The bootstrap
+
+-   In each case, we generate out-of-sample estimates of performance.
+
+-   A discussion of the pros and cons of the various methods can be found in @molinaro2005Prediction.
+
+## The Three-Way Split of the Data
+
+-   Earlier, we saw how to split the data into training and test sets.
+
+-   We can divide the training set again, resulting in two components:
+
+    -   The training set proper
+
+    -   The validation set
+
+-   The validation set allows us to assess how choices about tuning parameters in the training process generalize before we deploy the tuned model on our test set.
+
+::: notes
+It may sound like the validation set is just another test set. In a sense it is, but there is an important difference. When we move to our test set, no more changes to parameters are allowed. In the interplay between the training and validation sets, information from the validation set is used to learn about the tuning parameters. In that sense, the validation set is not a proper test set.
+:::
+
+## Validation Sets in `tidymodels`
+
+::: panel-tabset
+### Data
+
+```{r}
+#| message: false
+library(rio)
+library(tidymodels)
+library(tidyverse)
+tidymodels_prefer()
+happy_df <- import("Data/whr23.dta")
+row.names(happy_df) <- happy_df$country
+happy_clean <- happy_df %>%
+  select(happiness,logpercapgdp,socialsupport,healthylifeexpectancy,
+         freedom,generosity,perceptionsofcorruption) %>%
+  na.omit
+set.seed(10)
+happy_split <- initial_split(happy_clean, prop = 0.6, strata = happiness)
+happy_train <- training(happy_split)
+happy_test <- testing(happy_split)
+```
+
+### Validation
+
+```{r}
+val_set <- validation_split(happy_train, prop = 3/4)
+val_set
+```
+:::
+
+## Often We Can Do Better
+
+-   The split sample approach has a couple of disadvantages:
+
+    -   We train on a potentially small fraction of the original data, which induces a downward bias in performance.
+
+    -   We become only one value for the optimal tuning parameter, which means our sense of generalizability is limited.
+
+-   If we have a lot of data, these problems are typically not all that severe.
+
+-   In smaller data sets, we should and can do better through cross-validation or bootstrapping.
+
+::: notes
+If the training set becomes too small, this can be shown to induce bias in the performance estimates (see, for example, the work by Efron). Bias can also occur because the validation set can be atypical. In this sense, it would be better if we could generate different validation sets, as is the case with k-fold cross-validation and bootstrapping.
+:::
+
+## $k$-Fold Cross-Validation
+
+::: columns
+::: {.column width="50%"}
+```{r}
+#| echo: false
+#| message: false
+library(tidyverse)
+dummy <- data.frame(x = c(1), y = c(2))
+ggplot(dummy) +
+  geom_rect(aes(xmin = 0, xmax = 0.75,
+                ymin = 0, ymax = 0.25),
+            fill = "#386cb0") +
+  geom_rect(aes(xmin = 0.8, xmax = 1.55,
+                ymin = 0, ymax = 0.25), fill = "#386cb0") +
+  geom_rect(aes(xmin = 1.6, xmax = 2.35,
+                ymin = 0, ymax = 0.25),
+            fill = "#fdb462") +
+  geom_rect(aes(xmin = 0, xmax = 0.75,
+                ymin = -0.3, ymax = -0.05),
+            fill = "#386cb0") +
+  geom_rect(aes(xmin = 0.8, xmax = 1.55,
+                ymin = -0.3, ymax = -0.05),
+            fill = "#fdb462") +
+  geom_rect(aes(xmin = 1.6, xmax = 2.35,
+                ymin = -0.3, ymax = -0.05),
+            fill = "#386cb0") +
+  geom_rect(aes(xmin = 0, xmax = 0.75,
+                ymin = -0.6, ymax = -0.35),
+            fill = "#fdb462") +
+  geom_rect(aes(xmin = 0.8, xmax = 1.55,
+                ymin = -0.6, ymax = -0.35),
+            fill = "#386cb0") +
+  geom_rect(aes(xmin = 1.6, xmax = 2.35,
+                ymin = -0.6, ymax = -0.35),
+            fill = "#386cb0") +
+  annotate("text",
+           x = 0.375,
+           y = 0.125,
+           label = "TRAIN",
+           color = "white",
+           size = 10) +
+   annotate("text",
+           x = 1.175,
+           y = 0.125,
+           label = "TRAIN",
+           color = "white",
+           size = 10) +
+  annotate("text",
+           x = 1.975,
+           y = 0.125,
+           label = "VALIDATE",
+           color = "white",
+           size = 10) +
+  annotate("text",
+           x = 0.375,
+           y = -0.175,
+           label = "TRAIN",
+           color = "white",
+           size = 10) +
+  annotate("text",
+           x = 1.175,
+           y = -0.175,
+           label = "VALIDATE",
+           color = "white",
+           size = 10) +
+  annotate("text",
+           x = 1.975,
+           y = -0.175,
+           label = "TRAIN",
+           color = "white",
+           size = 10) +
+  annotate("text",
+           x = 0.375,
+           y = -0.475,
+           label = "VALIDATE",
+           color = "white",
+           size = 10) +
+  annotate("text",
+           x = 1.175,
+           y = -0.475,
+           label = "TRAIN",
+           color = "white",
+           size = 10) +
+  annotate("text",
+           x = 1.975,
+           y = -0.475,
+           label = "TRAIN",
+           color = "white",
+           size = 10) +
+  theme_void()
+```
+:::
+
+::: {.column width="50%"}
+-   Randomly assign instances to $k$ folds (typically, $k = 10$).
+
+-   Each fold is held out once for validation purposes.
+
+-   Each fold is used $k-1$ times for training purposes.
+:::
+:::
+
+::: notes
+All data are used for training. Moreover, we get $k$ sets to assess generalizability of a particular choice of tuning parameter values.
+:::
+
+## Variations on a Theme
+
+-   The higher we set $k$, the more data will be used for training at any given time.
+
+-   An extreme case is **leave out one CV** (LOOCV), where $k = n_1 - 1$.
+
+-   In each run, bias is reduced but variance is increased.
+
+-   Another way to reduce bias is to **repeatedly** assign instance to the folds, each time using a different seed.
+
+-   **Monte Carlo CV** selects the folds randomly each time, which may cause folds to contain overlapping instances [@xu2001Monte].
+
+::: notes
+\(1\) The less data we lose for training, the smaller the bias will be. However, with few validation instances, variation across the validation sets will increase. (2) Repeated CV ensures that the folds are composed differently each time, rendering the process less susceptible to capitalization on a specific random assignment. (3) Monte Carlo CV does not appear to offer any special benefits compared to repeated CV (see Molinaro et al.).
+:::
+
+## Cross-Validation in `tidymodels`
+
+::: panel-tabset
+### Vanilla
+
+```{r}
+set.seed(1923)
+vanilla_folds <- vfold_cv(happy_train, v = 10)
+vanilla_folds
+```
+
+### Repeated
+
+```{r}
+set.seed(1923)
+repeated_folds <- vfold_cv(happy_train, v = 10, repeats = 5)
+repeated_folds
+```
+
+### LOOCV
+
+```{r}
+set.seed(1923)
+loocv_folds <- loo_cv(happy_train)
+loocv_folds
+```
+
+### Monte Carlo
+
+```{r}
+set.seed(1923)
+mc_folds <- mc_cv(happy_train, prop = 9/10, times = 20)
+mc_folds
+```
+:::
+
+## The Bootstrap
+
+::: columns
+::: {.column width="50%"}
+![](Images/bootstrap.png){fig-align="center"}
+:::
+
+::: {.column width="50%"}
+-   The bootstrap consists of repeatedly sampling $n_1$ instances with replacement [@efron1979Bootstrap].
+
+-   Sampled instances are used for training.
+
+-   Non-sampled instances are used for validation.
+:::
+:::
+
+::: notes
+The probability of exclusion from the bootstrap sample is $\left( 1 - \frac{1}{n} \right)^n$. In the limit, this expression evaluates to $\frac{1}{e} \approx 0.368$. This means that only about 63.2% of the data are used for training. Due to repeat observations, the performance is under-estimated. One can overcome this by using the 632-bootstrap, which weighs the conservative estimate at 63.2% and an optimistic re-substitution error at 36.8%. This method is implemented in `caret` but not in `tidymodels`.
+:::
+
+## The Bootstrap in `tidymodels`
+
+```{r}
+set.seed(1923)
+booted <- bootstraps(happy_train, times = 100)
+booted
+```
+
+## The Price of Bootstrapping and Cross-Validation
+
+-   For each value of a tuning parameter, the model needs to be re-run multiple times.
+
+-   This can be extremely slow for complex models.
+
+-   This is why you often see that validation sets are used in deep learning.
+
+# Principal Component Regression and Partial Least Squares
+
+## Using Principal Components to Avoid an Over-Fit
+
+-   The problem of over-fitting can be stated as: $P$ weights are too many for the task.
+
+-   We have seen that we can reduce $P$ predictive features to $M < P$ principal components.
+
+-   If we use the components as the predictive features, then this should decrease the risk of over-fitting the data.
+
+-   This is known as **principal component regression**.
+
+## Recipe for Principal Component Regression
+
+1.  Select $M$ through cross-validation.
+2.  Use @eq-pca1 to create scores, $p_{im}$, on $M$ components.
+3.  Train $y_i = \beta^* + \sum_{m=1}^M \omega_m^* p_{im} + \varepsilon_i^*$.
+
+::: notes
+If we retain $P$ components, then $\omega^*$ is simply a linear transformation of $\omega$. Further, $\beta^* = \beta$. That changes when $M < P$.
+:::
+
+## A Limitation
+
+-   From a predictive modeling perspective, the problem with PC regression is that it never considers the label when constructing component scores.
+
+-   This means that PC regression is not designed to optimize the prediction of the label.
+
+-   We can change that by not just considering the total variance of the predictive features, but also the covariance of those features with the label.
+
+-   **Partial least squares** (PLS) allows this [@liu2022Partial; @wold2001PLSRegression].
+
+## Partial Least Squares
+
+For the $m$th component,
+
+$$
+\max_{\boldsymbol{\omega}_m} \text{Cor}^2(\boldsymbol{y},\boldsymbol{X}\boldsymbol{\omega}_m) \text{Var}(\boldsymbol{X}\boldsymbol{\omega}_m)
+$$ {#eq-pls}
+
+subject to the constraint that $\boldsymbol{\omega}_m$ is orthonormal.
+
+As in PC regression, $M$ is set through cross-validation. It is standard practice to standardize the predictive features.
+
+## Strategies for Tuning
+
+-   Grid searches:
+
+    -   We pre-define a set of values that should be evaluated.
+
+    -   Can be inefficient when the number of parameters is large.
+
+    -   Can itself be broken down into regular and irregular grids.
+
+-   Iterative searches:
+
+    -   We sequentially obtain new parameter combinations based on prior results.
+
+    -   Efficient in terms of number of passes, but each pass may take more time.
+
+    -   Can itself be broken down into Bayesian optimization and simulated annealing.
+
+-   For our simple problem, we do a regular grid search; other approaches will be discussed later.
+
+::: notes
+We shall discuss Bayesian optimization and simulated annealing when we get to support vector machines.
+:::
+
+## Setting Up for PLS
+
+::: panel-tabset
+### Prepare
+
+```{r}
+if (!require("remotes", quietly = TRUE)) {
+  install.packages("remotes")
+}
+remotes::install_bioc("mixOmics")
+```
+
+### Data
+
+```{r}
+head(happy_train)
+```
+
+### Pre-Process
+
+```{r}
+happy_recipe <- recipe(happiness ~ ., data = happy_train) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_pls(all_numeric_predictors(),
+           outcome = "happiness",
+           num_comp = tune())
+```
+
+### CV
+
+```{r}
+set.seed(20)
+cv_folds <- vfold_cv(happy_train,
+                     v = 10,
+                     repeats = 5)
+```
+
+### Tune Grid
+
+```{r}
+pls_grid <- tibble(num_comp = 1:6) 
+```
+
+### Model
+
+```{r}
+happy_model <-
+  linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("lm")
+```
+
+### Metric
+
+```{r}
+happy_metric <- metric_set(rsq)
+```
+
+### Flow
+
+```{r}
+happy_flow <- workflow() %>%
+  add_model(happy_model) %>%
+  add_recipe(happy_recipe)
+```
+:::
+
+::: notes
+In `tidymodels`, normalize = standardize. This is a bit confusing because normalize typically means that we put predictors on the 0-1 range. If had wanted to do that, we should have used the function `step_range`.
+:::
+
+## Selecting the Number of Components
+
+::: panel-tabset
+### Syntax
+
+```{r}
+#| eval: false
+set.seed(30)
+happy_tune <- happy_flow %>%
+  tune_grid(cv_folds,
+            grid = pls_grid,
+            metrics = happy_metric)
+autoplot(happy_tune) +
+  theme_light() +
+  labs(title = "Parameter Tuning for PLS Model")
+```
+
+### Plot
+
+```{r}
+#| echo: false
+set.seed(30)
+happy_tune <- happy_flow %>%
+  tune_grid(cv_folds,
+            grid = pls_grid,
+            metrics = happy_metric)
+autoplot(happy_tune) +
+  theme_light() +
+  labs(title = "Parameter Tuning for PLS Model")
+```
+
+### Optimum
+
+```{r}
+happy_best <-select_best(happy_tune)
+happy_best
+```
+:::
+
+## Finalizing the Model
+
+::: panel-tabset
+### Final Train
+
+```{r}
+num_comp <- select_best(happy_tune)
+final_flow <- happy_flow %>%
+  finalize_workflow(num_comp)
+final_est <- final_flow %>%
+  fit(happy_train)
+```
+
+### Parameters
+
+```{r}
+tidy(final_est)
+```
+
+### Plot Syntax
+
+```{r}
+#| eval: false
+final_recipe <- recipe(happiness ~ ., data = happy_train) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_pls(all_numeric_predictors(), outcome = "happiness", num_comp = 1)
+pls_prep <- prep(final_recipe)
+tidied_pls <- tidy(pls_prep, 2)
+tidied_pls %>%
+  group_by(component) %>%
+  slice_max(abs(value), n = 5) %>%
+  ungroup() %>%
+  ggplot(aes(value, fct_reorder(terms,value))) +
+  geom_col(show.legend = FALSE,  fill = "#31688EFF") +
+  facet_wrap(~ component, scales = "free_y") +
+  labs(y = NULL) +
+  theme_bw()
+```
+
+### Plot
+
+```{r}
+#| echo: false
+final_recipe <- recipe(happiness ~ ., data = happy_train) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_pls(all_numeric_predictors(), outcome = "happiness", num_comp = 1)
+pls_prep <- prep(final_recipe)
+tidied_pls <- tidy(pls_prep, 2)
+tidied_pls %>%
+  group_by(component) %>%
+  slice_max(abs(value), n = 5) %>%
+  ungroup() %>%
+  ggplot(aes(value, fct_reorder(terms,value))) +
+  geom_col(show.legend = FALSE,  fill = "#31688EFF") +
+  facet_wrap(~ component, scales = "free_y") +
+  labs(y = NULL) +
+  theme_bw()
+```
+:::
+
+::: notes
+The update of the workflow is a needed because otherwise the loadings cannot be extracted. The plot shows the 5 largest loadings by absolute size. In the final analysis, we only use 1 component as a predictive feature. This is where the reduced risk of over-fitting comes into play.
+:::
+
+## Deployment on the Test Set
+
+::: panel-tabset
+### Fit to Test
+
+```{r}
+pls_testfit <- final_est %>%
+  predict(happy_test) %>%
+  bind_cols(happy_test) %>%
+  metrics(truth = happiness, estimate = .pred)
+```
+
+### Metrics
+
+```{r}
+pls_testfit
+```
+:::
+
+::: notes
+With one component, we account for 82% of the variance in the test data. This seems quite reasonable.
+:::
+
+# Regularization
+
+## What Is Regularization?
+
+-   [**Regularization**]{style="color: red;"} adds a penalty for over-fitting to the loss function.
+
+-   This penalty serves as a constraint on the optimization problem.
+
+-   We can also think of this as a shrinkage estimator, with small coefficients being shrunk to the benefit of larger coefficients.
+
+-   The most important regularization procedures are
+
+    -   The lasso.
+
+    -   Tikhonov regularization.
+
+    -   Elastic nets.
+
+## The Lasso
+
+::: columns
+::: {.column width="50%"}
+-   **Lasso** = least absolute shrinkage and selection operator.
+
+-   We impose $\sum_{j=1}^P \lvert \omega_j \rvert \leq t$.
+
+-   Using Lagrange multipliers, the lasso loss is $L_{\text{lasso}} = L_2 + \lambda \left( \sum_{j=1}^P \lvert \omega_j \rvert - t \right)$.
+
+-   Retaining only the terms in $\omega$, the optimization problem is
+
+    $$
+    \min_{\boldsymbol{\omega}} \sum_{i=1}^{n_1} \left( \beta + \boldsymbol{x}_i^\top \boldsymbol{\omega} - y_i \right)^2 + \lambda \lvert \boldsymbol{\omega} \rvert
+    $$ {#eq-lasso}
+
+-   $\lambda$ is a tuning parameter.
+:::
+
+::: {.column width="50%"}
+![](Images/lasso.jpg){fig-align="center"}
+:::
+:::
+
+::: notes
+\(1\) The coefficient for $x_1$ is shrunk to 0, which amounts to dropping the predictive feature from the model. (2) The underlying assumption is that the predictors are on the same scale.
+:::
+
+## What the Lasso Does
+
+::: panel-tabset
+### 1st Example
+
+```{r}
+#| echo: false
+#| message: false
+library(ggthemes)
+ols <- seq(-3, 3, 0.1)
+f1 <- ifelse(ols >= 1, ols-1,
+             ifelse(ols <= -1, ols+1, 0))
+f2 <- ifelse(ols >=2, ols-2,
+             ifelse(ols <= -2, ols+2, 0))
+f3 <- ols
+par(mar=c(5,5,4,2))
+plot(ols, f1, type = "l", lwd = 3, col = "#21918c", xlab = expression(w^OLS),
+     ylab = expression(w^lasso), main = "Orthonormal Features")
+points(ols, f2, type = "l", lwd = 3, col = "#fde725")
+points(ols, f3, type = "l", lwd = 3, col = "#440154")
+legend("topleft",
+       legend=c(expression(lambda==0), expression(lambda==1), expression(lambda==2)),
+       col=c("#440154", "#21918c", "#fde725"),
+       lty = c(1, 1, 1),
+       lwd = c(3, 3, 3))
+```
+
+### 2nd Example
+
+```{r}
+#| echo: false
+#| message: false
+library(glmnet)
+library(MASS)
+library(plotmo)
+mu <- c(5,5)
+sd <- c(2,2)
+r <- 0.6
+sigma <- matrix(
+  c(sd[1]^2,r*sd[1]*sd[2],r*sd[1]*sd[2],sd[2]^2),
+  nrow = 2, ncol = 2, byrow = TRUE
+)
+n <- 100
+set.seed(1617)
+X <- mvrnorm(n, mu, sigma)
+e <- rnorm(n, 0, 2)
+y <- -2 + X[,1] + 0.2*X[,2] + e
+lasso_fit <- glmnet(X, y, alpha = 1)
+plot_glmnet(lasso_fit, lwd = 3, col = c("#21918c","#fde725"),
+            main = "Correlated Features")
+```
+:::
+
+::: notes
+The lasso has been criticized for lacking the oracle property---the asymptotic property that an algorithm knows the true relevant features and is willing to act on that knowledge. Zou (2006) proposes a variant with feature-specific tuning parameters. This possesses the oracle property but is not widely used due to its complexity.
+:::
+
+## Variations on a Theme
+
+-   We can think of the lasso as a special case of
+
+    $$
+    \min_{\boldsymbol{\omega}} \sum_{i=1}^{n_1} \left( \beta + \boldsymbol{x}_i^\top \boldsymbol{\omega} - y_i \right)^2 + \lambda \lvert \boldsymbol{\omega} \rvert^q
+    $$
+
+-   For $q = 1$, this becomes the lasso.
+
+-   For $q = 2$, this becomes **Tikhonov regularization** (a.k.a. ridge regression).
+
+## Tikhonov Regularization
+
+::: columns
+::: {.column width="50%"}
+![](Images/ridge.jpg){fig-align="center"}
+:::
+
+::: {.column width="50%"}
+-   We minimize the $L_2$-norm subject to $\sum_{j=1}^P \omega_j^2 \leq t$.
+
+-   Hence,
+
+    $$
+    \min_{\boldsymbol{\omega}} \sum_{i=1}^{n_1} \left( \beta + \boldsymbol{x}_i^\top \boldsymbol{\omega} - y_i \right)^2 + \lambda \sum_{j=1}^P \omega_j^2
+    $$ {#eq-tikhonov}
+:::
+:::
+
+::: notes
+Whereas the lasso shrinks certain coefficients to 0, this is less likely to occur with Tikhonov regularization.
+:::
+
+## Elastic Nets
+
+-   Elastic nets are a mixture of the lasso and Tikhonov regularization.
+
+-   For $\alpha \in [0,1]$, define the penalty
+
+    $$
+    P(\alpha) = \sum_{j=1}^P \left[ \frac{1}{2} (1 - \alpha) \omega_j^2 + \alpha \lvert \omega_j \rvert \right]
+    $$ {#eq-mixture}
+
+-   Then
+
+    $$
+    \min_{\boldsymbol{\omega}} \sum_{i=1}^{n_1} \left( \beta + \boldsymbol{x}_i^\top \boldsymbol{\omega} - y_i \right)^2 + \lambda P(\alpha)
+    $$ {#eq-elastic}
+
+-   Note this reduces to
+
+    -   the lasso for $\alpha = 1$
+
+    -   Tikhonov regularization for $\alpha = 0$
+
+::: notes
+An extension of the idea is SLOPE, which allows powers $q > 2$ and all lower terms.
+:::
+
+## Elastic Nets in `tidymodels`
+
+::: panel-tabset
+### Setup
+
+From PLS, we recycle:
+
+-   The split sample.
+
+-   The cross-validation setup.
+
+-   The standardization.
+
+We use `dials` for tuning instead of the `tibble` we used for PLS. We use a regular grid.
+
+### Workflow
+
+```{r}
+model_recipe <- recipe(happiness ~ ., data = happy_train) %>%
+  step_normalize(all_numeric_predictors())
+elastic_spec <-  linear_reg(penalty = tune(),
+                            mixture = tune()) %>%
+  set_mode("regression") %>%
+  set_engine("glmnet")
+elastic_wf <- workflow() %>%
+  add_model(elastic_spec) %>%
+  add_recipe(model_recipe)
+elastic_metrics <- metric_set(rsq)
+```
+
+### Grid
+
+```{r}
+glmnet_param <- extract_parameter_set_dials(elastic_spec)
+elastic_grid <- grid_regular(glmnet_param, levels = 5)
+print(elastic_grid, n = 6)
+```
+
+### Tuning
+
+```{r}
+doParallel::registerDoParallel()
+set.seed(1561)
+elastic_tune <- elastic_wf %>%
+  tune_grid(cv_folds, grid = elastic_grid, metrics = elastic_metrics)
+elastic_best <- select_best(elastic_tune)
+elastic_best
+```
+
+### Plot
+
+```{r}
+#| echo: false
+autoplot(elastic_tune) +
+  theme_light() +
+  labs(title='Hyperparameter Tuning for Elastic Net')
+```
+
+### Finalize
+
+```{r}
+elastic_updated <- finalize_model(elastic_spec,
+                              elastic_best)
+workflow_new <- elastic_wf %>%
+  update_model(elastic_updated)
+new_fit <- workflow_new %>%
+  fit(data = happy_train)
+tidy_elastic <- new_fit %>%
+  extract_fit_parsnip() %>%
+  tidy()
+```
+
+### Estimates
+
+```{r}
+tidy_elastic
+```
+:::
+
+::: notes
+I leave model evaluation as an exercise. Here, I let `dials` generate the values for the grid. You could also have used `crossing` to do this, but keep in mind that `glmnet` puts the penalty on a logarithmic (base-10) scale.
+:::
+
+## Better Tuning
+
+::: panel-tabset
+### Comment
+
+`tidymodels` shines in its handling of tuning parameters, allowing for optimized experimental designs. Here, we shall use a Latin hyper-cube. This ensures that we fill the entire tuning parameter space.
+
+### Grid
+
+```{r}
+elastic_grid <- grid_latin_hypercube(glmnet_param,
+                                     size = 25,
+                                     variogram_range = 0.5,
+                                     original = TRUE)
+print(elastic_grid, n = 6)
+```
+
+### Tuning
+
+```{r}
+set.seed(101)
+elastic_tune <- elastic_wf %>%
+  tune_grid(cv_folds, grid = elastic_grid, metrics = elastic_metrics)
+elastic_best <- select_best(elastic_tune)
+elastic_best
+```
+:::
+
+::: notes
+\(1\) Latin hyper-cubes are generalizations of Latin squares. A Latin square design ensures there is only one sample in each row and column, so duplicates are avoided. (2) The higher the `variogram_range` parameter, the lower the likelihood of empty regions in the parameter space.
+:::
+
+## Changes for the Lasso and Tikhonov Regularization
+
+::: panel-tabset
+### Lasso
+
+```{r}
+#| eval: false
+elastic_spec <-  linear_reg(penalty = tune(),
+                            mixture = 1) %>%
+  set_mode("regression") %>%
+  set_engine("glmnet")
+```
+
+### Tikhonov
+
+```{r}
+#| eval: false
+elastic_spec <-  linear_reg(penalty = tune(),
+                            mixture = 0) %>%
+  set_mode("regression") %>%
+  set_engine("glmnet")
+```
+:::
+
+## References
+
+::: {#refs style="color: gray;"}
+:::

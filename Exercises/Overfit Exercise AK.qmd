@@ -1,0 +1,245 @@
+---
+title: "OVER-FIT EXERCISE---ANSWER KEY"
+code-fold: true
+title-block-banner: true
+format:
+  html:
+    self-contained: true
+    theme: journal
+editor: visual
+bibliography: /Users/poli-glot/Documents/Tools/references.bib
+---
+
+# Answers
+
+## Problem 1
+
+> **First, we apply partial least squares (PLS). Using 10-fold cross-validation with 5 repeats, what is the optimal number of components?**
+
+We will apply the same transformations as we performed for the **Regression Exercise**. In addition, we perform PLS. We start by reading in the data and performing a logarithmic transformation of median housing values.
+
+```{r}
+#| message: false
+library(mlbench)
+library(tidyverse)
+data("BostonHousing2")
+work_df <- BostonHousing2 %>%
+  mutate(log_cmedv = log10(cmedv)) %>%
+  select(-c(town, lon, lat, medv, cmedv))
+summary(work_df$log_cmedv)
+```
+
+Next, we generate the training and test sets. For comparability with the regression exercise, I use the same seed.
+
+```{r}
+#| message: false
+library(tidymodels)
+tidymodels_prefer()
+set.seed(1234)
+data_split <- initial_split(work_df, prop = 0.70, strata = log_cmedv)
+train <- training(data_split)
+test <- testing(data_split)
+data_split
+```
+
+Now we write the recipe, which is identical to what we wrote for the regression exercise but with an added instruction for PLS, as well as a `step_normalize` function. That function is necessary to get comparable loadings for question 2.
+
+```{r}
+housing_rec <- recipe(log_cmedv ~ ., data = train) %>%
+  update_role(tract, new_role = "id") %>%
+  step_BoxCox(crim, dis, rad, b) %>%
+  step_YeoJohnson(zn) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_dummy(chas) %>%
+  step_pls(all_numeric_predictors(),
+           outcome = "log_cmedv",
+           num_comp = tune())
+housing_rec
+```
+
+I have set the number of components (`num_comp`) as a tuning parameter. We have 13 predictive features, which means we could extract up to 13 components. I define the grid accordingly.
+
+```{r}
+housing_grid <- tibble(num_comp = 1:13)
+housing_grid
+```
+
+We evaluate the values of the tuning grid using repeated 10-fold cross-validation:
+
+```{r}
+set.seed(1780)
+housing_folds <- vfold_cv(train,
+                          v = 10,
+                          repeats = 5)
+housing_folds
+```
+
+We now search for the optimal value of the number of components. The results are shown in the plot below.
+
+```{r}
+housing_spec <- linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("lm")
+housing_wf <- workflow() %>%
+  add_recipe(housing_rec) %>%
+  add_model(housing_spec)
+housing_metric <- metric_set(rsq)
+set.seed(30)
+housing_tune <- housing_wf %>%
+  tune_grid(housing_folds,
+            grid = housing_grid,
+            metrics = housing_metric)
+autoplot(housing_tune) +
+  theme_light() +
+  labs(title = "Parameter Tuning for PLS Model")
+```
+
+Based on this plot, the optimal number of components is:
+
+```{r}
+select_best(housing_tune)
+```
+
+## Problem 2
+
+> **Which features have the highest loadings?**
+
+We finalize the model fit, extract the loadings, and then plot those.
+
+```{r}
+num_comp <- select_best(housing_tune)
+housing_wf2 <- housing_wf %>%
+  finalize_workflow(num_comp)
+final_est <- housing_wf2 %>%
+  fit(train)
+final_recipe <- recipe(log_cmedv ~ ., data = train) %>%
+  update_role(tract, new_role = "id") %>%
+  step_BoxCox(crim, dis, rad, b) %>%
+  step_YeoJohnson(zn) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_pls(all_numeric_predictors(),
+           outcome = "log_cmedv",
+           num_comp = 5)
+pls_prep <- prep(final_recipe)
+tidied_pls <- tidy(pls_prep, 4)
+tidied_pls %>%
+  group_by(component) %>%
+  slice_max(abs(value), n = 5) %>%
+  ungroup() %>%
+  ggplot(aes(value, fct_reorder(terms,abs(value)))) +
+  geom_col(show.legend = FALSE,  fill = "#386cb0") +
+  facet_wrap(~ component, scales = "free_y") +
+  labs(y = NULL) +
+  theme_bw()
+```
+
+The highest loading for the first component is found for `lstat`, the percentage of lower status people. The same is true of the second component, with `rm` being a close second. The highest loading for the third component is again `lstat`. For the fourth component, it is `rm`. Finally, the highest loading for the fifth component occurs for `age`.
+
+## Problem 3
+
+> **Using the test set, how well can you predict the median housing values using PLS?**
+
+```{r}
+pls_testfit <- final_est %>%
+  predict(test) %>%
+  bind_cols(test) %>%
+  metrics(truth = log_cmedv, estimate = .pred)
+pls_testfit
+```
+
+The R-squared is comparable to the value obtained in the **Regression Exercise**.
+
+## Problem 4
+
+> **Apply the lasso to the prediction task. Using the same cross-validation method as before, find the optimal value of the penalty term. Using this penalty, are there any features that receive zero weights? If so, which ones?**
+
+We adjust the recipe from before so that the PLS element is removed. We keep the cross-validation folds we set up earlier, as well as the metric. The model specification remains the linear model but we now use `glmnet` as the engine. For the cross-validation, we run the following code:
+
+```{r}
+housing_rec <- recipe(log_cmedv ~ ., data = train) %>%
+  update_role(tract, new_role = "id") %>%
+  step_BoxCox(crim, dis, rad, b) %>%
+  step_YeoJohnson(zn) %>%
+  step_normalize(all_numeric_predictors()) %>%
+  step_dummy(chas)
+lasso_spec <-  linear_reg(penalty = tune(),
+                          mixture = 1) %>%
+  set_mode("regression") %>%
+  set_engine("glmnet")
+lasso_wf <- workflow() %>%
+  add_model(lasso_spec) %>%
+  add_recipe(housing_rec)
+lasso_pars <- extract_parameter_set_dials(lasso_wf)
+set.seed(1451)
+lasso_grid <- grid_max_entropy(lasso_pars, size = 25, variogram_range = 0.5)
+set.seed(1451)
+doParallel::registerDoParallel()
+lasso_tune <- lasso_wf %>%
+  tune_grid(housing_folds, grid = lasso_grid, metrics = housing_metric)
+autoplot(lasso_tune)
+```
+
+We now finalize the fit and inspect the regression weights:
+
+```{r}
+penalty <- select_best(lasso_tune)
+lasso_wf2 <- lasso_wf %>%
+  finalize_workflow(penalty)
+final_est2 <- lasso_wf2 %>%
+  fit(train)
+extract_fit_parsnip(final_est2) %>%
+  tidy()
+
+```
+
+No coefficient was shrunk to zero.
+
+## Problem 5
+
+> **What is the predictive performance of the lasso?**
+
+```{r}
+lasso_testfit <- final_est2 %>%
+  predict(test) %>%
+  bind_cols(test) %>%
+  metrics(truth = log_cmedv, estimate = .pred)
+lasso_testfit
+```
+
+We explain about 74 percent of the variance, which is slightly better than PLS.
+
+## Problem 6
+
+> **Now apply an elastic net. Again using the same cross-validation method, find the optimal values of the mixture and penalty terms. Using those values, how good is the fit for the test data?**
+
+What changes is that we tune both the penalty and mixture parameters. Otherwise, the flow is pretty much identical to what we did before. Running that flow, we obtain the following results.
+
+```{r}
+elast_spec <-  linear_reg(penalty = tune(),
+                          mixture = tune()) %>%
+  set_mode("regression") %>%
+  set_engine("glmnet")
+elast_wf <- workflow() %>%
+  add_model(elast_spec) %>%
+  add_recipe(housing_rec)
+elast_pars <- extract_parameter_set_dials(elast_wf)
+set.seed(1561)
+elast_grid <- grid_latin_hypercube(elast_pars, size = 50, variogram_range = 0.5)
+set.seed(1451)
+doParallel::registerDoParallel()
+elast_tune <- elast_wf %>%
+  tune_grid(housing_folds, grid = elast_grid, metrics = housing_metric)
+tune <- select_best(elast_tune)
+tune
+elast_wf2 <- elast_wf %>%
+  finalize_workflow(tune)
+final_est3 <- elast_wf2 %>%
+  fit(train)
+elast_testfit <- final_est3 %>%
+  predict(test) %>%
+  bind_cols(test) %>%
+  metrics(truth = log_cmedv, estimate = .pred)
+elast_testfit
+```
+
+With a 5 percent lasso and 95 percent Thikonov regularization, as well as a penalty of around 0.005, the performance is slightly better than that of the Lasso.

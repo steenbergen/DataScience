@@ -1,0 +1,25 @@
+---
+title: "$k$-NEAREST NEIGHBOR REGRESSION EXERCISE"
+title-block-banner: true
+format:
+  html:
+    self-contained: true
+    theme: journal
+editor: visual
+bibliography: /Users/poli-glot/Documents/Tools/references.bib
+---
+
+## Overview
+
+In this exercise, you will perform a $k$-nearest neighbor analysis of the 2023 World Happiness Report data [@helliwell2023World]. Your task is to predict the happiness score using the features in the data. For this purpose, you may ignore `continent` as a predictor.
+
+# Problem Set
+
+1.  Use cross-validation to tune the regression model. Show the performance for the various values of the tuning parameters.
+
+2.  What are the optimal values of the tuning parameters?
+
+3.  Re-fit the model for the optimal values of the tuning parameters. What is the predictive performance of the model in the test set?
+
+::: references
+:::

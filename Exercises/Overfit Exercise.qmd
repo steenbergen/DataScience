@@ -1,0 +1,23 @@
+---
+title: "OVER-FIT EXERCISE"
+title-block-banner: true
+format:
+  html:
+    self-contained: true
+    theme: journal
+editor: visual
+bibliography: /Users/poli-glot/Documents/Tools/references.bib
+---
+
+# Overview
+
+In the previous homework, you performed a regression analysis on the `BostonHousing2` data. In that analysis there were 13 predictive features. A legitimate question to ask is whether all of those features are necessary or whether we are over-fitting the data. In this homework, you will use both partial least squares and regularization to re-analyze the data. To keep things comparable, you should use the same seed on the initial split.
+
+# Problem Set
+
+1.  First, we apply partial least squares (PLS). Using 10-fold cross-validation with 5 repeats, what is the optimal number of components?
+2.  Which features have the highest loadings?
+3.  Using the test set, how well can you predict the median housing values using PLS?
+4.  Apply the lasso to the prediction task. Using the same cross-validation method as before, find the optimal value of the penalty term. Using this penalty, are there any features that receive zero weights? If so, which ones?
+5.  What is the predictive performance of the lasso?
+6.  Now apply an elastic net. Again using the same cross-validation method, find the optimal values of the mixture and penalty terms. Using those values, how good is the fit for the test data?

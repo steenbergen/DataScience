@@ -1,0 +1,152 @@
+---
+title: "$k$-NEAREST NEIGHBOR REGRESSION EXERCISE---ANSWER KEY"
+code-fold: true
+title-block-banner: true
+format:
+  html:
+    self-contained: true
+    theme: journal
+editor: visual
+bibliography: /Users/poli-glot/Documents/Tools/references.bib
+---
+
+# Answers
+
+## Problem 1
+
+> **Use cross-validation to tune the regression model. Show the performance for the various values of the tuning parameters.**
+
+**Step 1:** We start by reading in the data.
+
+```{r}
+#| message: false
+library(rio)
+library(tidyverse)
+happy_df <- import("whr23.dta")
+tibble(happy_df)
+```
+
+There are missing values on happiness. In one instance---Palestine---there is also a missing value on healthy life expectancy. We perform listwise deletion to eliminate the missing values. Additionally, we drop a number of irrelevant variables from the data frame, to wit: `stderr`, `continent`, and `ISO3`. (The first variable is simply the standard error of the happiness score, whereas the last variable is redundant with `country`. The instructions already suggested dropping `continent`.) The new data frame is as follows.
+
+```{r}
+work_df <- happy_df %>%
+  filter(!is.na(happiness) & !is.na(healthylifeexpectancy)) %>%
+  select(-c(stderr, continent, ISO3))
+summary(work_df)
+```
+
+**Step 2:** We now generate the split samples. For this exercise, where a bit of learning has to be done, I decided to use a split of 75 percent training and 25 percent testing.
+
+```{r}
+#| message: false
+library(tidymodels)
+tidymodels_prefer()
+set.seed(10)
+happy_split <- initial_split(work_df, prop = 0.75, strata = happiness)
+train <- training(happy_split)
+test <- testing(happy_split)
+happy_split
+```
+
+**Step 3:** The next step is to write a recipe with pre-processing steps. One of those steps involves turning `country` into an identifier. As far as transformations are concerned, perceptions of corruption shows a bit of skewness and will be transformed using a Box-Cox transformation [@box1964Analysis]. Very important is that we standardize all of the predictors because we shall be using the Minkowski distance metric to find neighbors. Thus, the recipe is:
+
+```{r}
+knn_rec <- recipe(happiness ~ ., data = train) %>%
+  update_role(country, new_role = "id") %>%
+  step_BoxCox(perceptionsofcorruption) %>%
+  step_normalize(all_numeric_predictors())
+knn_rec
+```
+
+**Step 4:** We now come to the specification of the $k$-nearest neighbors algorithm. This has several tuning parameters: (1) the number of `neighbors`; (2) the kernel (`weight_func`); and (3) the power of the Minkowski metric (`dist_power`).
+
+```{r}
+knn_spec <- nearest_neighbor(neighbors = tune(),
+                             weight_func = tune(),
+                             dist_power = tune()) %>%
+  set_mode("regression") %>%
+  set_engine("kknn")
+knn_spec
+```
+
+**Step 5:** We are now setting the workflow.
+
+```{r}
+knn_flow <- workflow() %>%
+  add_model(knn_spec) %>%
+  add_recipe(knn_rec)
+```
+
+**Step 6:** We now tune the hyper-parameters. Prior to tuning, we set the cross-validation.
+
+```{r}
+set.seed(20)
+folds <- vfold_cv(train, v = 10, repeats = 5)
+folds
+```
+
+We also set a performance metric.
+
+```{r}
+knn_metric <- metric_set(rsq)
+knn_metric
+```
+
+The tuning grid is specified as follows.
+
+```{r}
+knn_grid <- crossing(
+  neighbors = 1:75,
+  weight_func = c("biweight", "cos", "epanechnikov", "gaussian",
+                  "inv", "optimal", "rectangula", "triweight"),
+  dist_power = 1:2
+)
+tibble(knn_grid)
+```
+
+At long last, we get to the tuning itself.
+
+```{r}
+doParallel::registerDoParallel()
+set.seed(30)
+knn_tune <- knn_flow %>%
+  tune_grid(folds, grid = knn_grid, metrics = knn_metric)
+autoplot(knn_tune) +
+  theme_light() +
+  labs(title="Hyper-Parameter Tuning for kNN Regression")
+```
+
+## Problem 2
+
+> **What are the optimal values of the tuning parameters?**
+
+```{r}
+knn_best <- select_best(knn_tune)
+knn_best
+```
+
+The results suggest that we should use `r knn_best[,1]` neighbors, an inverse weight function, and use Manhattan distance.
+
+## Problem 3
+
+> **Re-fit the model for the optimal values of the tuning parameters. What is the predictive performance of the model in the test set?**
+
+Performance in the test set is given by:
+
+```{r}
+knn_updated <- finalize_model(knn_spec, knn_best)
+knn_flow2 <- knn_flow %>%
+  update_model(knn_updated)
+new_fit <- knn_flow2 %>%
+  fit(data = train)
+knn_test_metrics <- new_fit %>%
+  predict(test) %>%
+  bind_cols(test) %>%
+  metrics(truth = happiness, estimate = .pred)
+knn_test_metrics
+```
+
+Without a model, we obtain an R-squared of `r round(knn_test_metrics[2,3], 3)`. We can use this as a baseline to assess the performance of other algorithms such as regression.
+
+::: references
+:::

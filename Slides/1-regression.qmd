@@ -1,0 +1,1128 @@
+---
+title: "REGRESSION AS A MACHINE:"
+subtitle: "An Introduction to Machine Learning"
+author: "Marco R. Steenbergen"
+institute: "University of Zurich"
+format:
+  revealjs:
+    self-contained: true
+    fig-format: retina
+    toc: true
+    toc-depth: 1
+    number-sections: false
+    toc-title: "In this lecture"
+    theme: [default, "sydney.scss"]
+    code-line-numbers: false
+    slide-number: c
+    scrollable: false
+    pdf-max-pages-per-slide: 1
+    history: false # don't add each slide to browser history
+bibliography: /Users/poli-glot/Documents/Tools/references.bib
+csl: apa-old-doi-prefix.csl
+execute:
+  echo: true
+---
+
+# What Is Machine Learning?
+
+## Of Experiences, Tasks, and Performance
+
+::: callout-note
+### Definition
+
+The design of algorithms that learn from data and are capable of improvement as new experiences emerge. Specifically, the algorithm "is said to learn from experience $E$ with respect to some task $T$ and performance measure $P$, if its performance at task $T$, as measured by $P$, improves with experience $E$" [@mitchell1997Machine, 2].
+:::
+
+::: notes
+Experience is data. Data, tasks, and performance metrics are the holy trilogy of machine learning.
+:::
+
+## A Continuum of Machine Learning Algorithms
+
+The poles are:
+
+1.  Unsupervised machine learning:
+    -   Does not require labeled outcomes.
+2.  Supervised machine learning:
+    -   Requires labeled outcomes.
+    -   These could be
+        -   Classes, i.e., [**classification tasks**]{style="color:red;"}.
+        -   Numerical scores, i.e., [**regression tasks**]{style="color:red;"}.
+
+::: notes
+There are many ways of classifying machine learning algorithms. This is just one of them.
+:::
+
+## Machine Learning in the Social Sciences
+
+The main uses of machine learning in (applied) social science are the:
+
+1.  [**Automation**]{style="color:red;"} of tedious, time-consuming, and error prone coding tasks.
+2.  [**Prediction**]{style="color:red;"} of behavior (also in applied work).
+3.  [**Induction:**]{style="color:red;"} Developing new theories from patterns in data [@breiman2001Statistical; also @korb2004Introduction].
+
+::: notes
+Controversy remains. In prediction, there have been various scandals (e.g., Dutch tax office). Inductive uses are often criticized, not least because of the Humean critique of induction.
+:::
+
+# Essentials of Supervised Machine Learning
+
+## A Different Style of Data Science
+
+-   The typical approach in the social sciences involves
+    -   Imposing a model on the data.
+    -   Drawing inferences across the whole sample.
+    -   A primary focus on interpretation.
+-   Supervised machine learning involves
+    -   Learning a model from the data.
+    -   Dividing the data into test and training sets.
+    -   A primary focus on prediction.
+
+::: notes
+\(1\) Although the primary focus in SML remains on prediction, there is growing awareness that interpretation is just as important. (2) Depending on whether the learning is done by statisticians or computer scientists, you may find that uncertainty and hypothesis testing play no role in SML, especially not with big data.
+:::
+
+## A Different Jargon
+
+::: columns
+::: {.column width="50%"}
+**Traditional**
+
+-   Data
+
+-   Unit
+
+-   Variable
+
+-   Outcome
+:::
+
+::: {.column width="50%"}
+**Machine Learning**
+
+-   Set
+
+-   Sample, example, or instance
+
+-   Feature
+
+-   Label
+:::
+:::
+
+## The Generic Learning Problem
+
+::: callout-note
+## Model
+
+An algorithm learns the model
+
+$$
+y_i = \phi \left(\boldsymbol{x}_i,\boldsymbol{\theta} \right) + \varepsilon_i
+$$ {#eq-task}
+:::
+
+-   $i$ is the instance.
+
+-   $y$ is the label (a class or a score).
+
+-   $\phi(.)$ is an unknown function.
+
+-   $\boldsymbol{x}$ is the vector of predictive features.
+
+-   $\boldsymbol{\theta}$ are the unknown (tuning) parameters.
+
+-   $\varepsilon$ is irreducible error.
+
+::: notes
+\(1\) The features can be in their raw form or engineered. (2) The parameters can be of the estimable type or tuning parameters that have to be set through cross-validation. Sometimes the outcome variable is transformed, e.g., class label to probability. I ignore that complexity here.
+:::
+
+## The Generic Prediction Task
+
+::: callout-note
+## Prediction
+
+$$
+\psi_i = f \left( \boldsymbol{x}_i^*, \boldsymbol{q} \right)
+$$ {#eq-prediction}
+:::
+
+-   $\psi$ is the predicted value.
+
+-   $f(.)$ is the learnt functional form.
+
+-   $\boldsymbol{x}^*$ is the subset of relevant features $\Rightarrow$ [**feature selection**]{style="color:red;"}.
+
+-   $\boldsymbol{q}$ contains the optimal parameter values.
+
+::: notes
+\(1\) We can make predictions in- and out-of-sample. The ability to make out-of-sample predictions is the key selling point of machine learning. (2) Another major selling point is the ability to learn which predictive features are relevant and which ones are not.
+:::
+
+## The Loss Function
+
+-   In statistics, loss = error.
+
+-   For at least one instance, $\psi_i \neq y_i$.
+
+-   The [**loss function**]{style="color:red;"} quantifies the totality of error in the scalar $L \left( \psi_i,y_i \right)$.
+
+-   This quantity plays a crucial role in the learning process, which selects $f(.)$ and $\boldsymbol{q}$ in such a way that loss is **minimized**.
+
+-   Later, we shall see how this is done.
+
+## Performance
+
+-   [**Performance metrics**]{style="color:red;"} measure how well the model accounts for the data and are given by $P \left( \psi_i, y_i \right)$.
+
+-   In some cases, they are derived directly from the loss function; in other cases, they follow their own logic [see @japkowicz2011Evaluating].
+
+-   Regardless, our goal is to achieve *outstanding* predictive performance [but see @thomas2020Problem].
+
+::: notes
+Since prediction is the main focus of machine learning, we always look for outstanding performance metrics. Sometimes, we also generate a baseline to which the performance of a model can be compared.
+:::
+
+## A Division of Labor
+
+-   Training = the process of learning the functional form, parameters, and relevant features.
+
+-   Evaluation = the process of assessing model performance.
+
+-   **Cardinal rule:** Never train and evaluate on the same data!
+
+-   Instead, we generate:
+
+    -   A [**training set**]{style="color:red;"} for training purposes
+
+    -   A [**test set**]{style="color:red;"} for evaluation purposes
+
+::: notes
+In some cases, we may also create a validation set. We discuss this further in the context of over-fitting.
+:::
+
+## The Split Sample Approach
+
+::: columns
+::: {.column width="50%"}
+```{r}
+#| echo: false
+#| message: false
+library(tidyverse)
+dummy <- data.frame(x = c(1), y = c(2))
+ggplot(dummy) +
+  geom_rect(aes(xmin = 0, xmax = 1.5,
+                ymin = 0, ymax = 0.5),
+            fill = "#386cb0") +
+  geom_rect(aes(xmin = 1.55, xmax = 2.35,
+                ymin = 0, ymax = 0.5),
+            fill = "#fdb462") +
+  annotate("text",
+           x = 0.75,
+           y = 0.25,
+           label = "TRAINING \np",
+           color = "white",
+           size = 15) +
+  annotate("text",
+           x = 1.95,
+           y = 0.25,
+           label = "TESTING \n1 - p",
+           color = "white",
+           size = 15) +
+  theme_void()
+```
+:::
+
+::: {.column width="50%"}
+-   If necessary randomize the $n$ instances.
+
+-   Set aside a fraction of $p$ instances for training $\Rightarrow$ training set of size $n_1 = p \cdot n$.
+
+-   Set aside a fraction of $1-p$ instances for evaluation $\Rightarrow$ test set of size $n_2 = n - n_1$.
+:::
+:::
+
+::: notes
+\(1\) Randomization of the data is not advisable if they form a time series. (2) We can do both simple random sampling or stratified sampling. The latter preserves, for example, the outcome distribution.
+:::
+
+## Not by Performance Alone
+
+-   Although performance remains of paramount importance, interpretation becomes ever more important in machine learning.
+
+-   In the words of @ribeiro2016Why [p. 1], "if the users do not trust a model or a prediction, they will not use it."
+
+-   Interpretation can be easier or more complex, depending on the nature of the algorithm.
+
+## The Machine Learning Workflow
+
+![](Images/superflow.png){fig-align="center"}
+
+::: notes
+Putting it all together, a SML workflow starts with data preparation, followed by training on a training set, and evaluation on a test set. At this stage, improvements to the algorithm can be made through tuning, cycling once more through training and evaluation. If everything is OK, the algorithm can be deployed.
+:::
+
+## The Workflow in `tidymodels`
+
+![](Images/tidymodels.png){fig-align="center"}
+
+::: {style="font-size: 75%"}
+**Source:** [RPubs](https://rpubs.com/Onduma/tidymodels)
+:::
+
+::: notes
+\(1\) `rsample` takes care of creating split samples and of cross-validation; (2) `recipes` is in charge of pre-processing the data and of feature engineering; (3) `parsnip` is the model interface; (4) `yardstick` measures model performance; and (5) `tune` and `dials` are used for parameter tuning.
+:::
+
+# Theory of Regression Analysis
+
+## Preliminary Remarks
+
+-   The familiar regression model can be cast as a machine learning algorithm.
+
+-   It is limited to regression tasks.
+
+-   It is also somewhat atypical:
+
+    -   $\phi(.)$ is opposed instead of learnt.
+
+    -   There are no tuning parameters.
+
+    -   There is no feature selection.
+
+-   Because of its simplicity, however, it is a useful didactic starting point.
+
+::: notes
+Because $\phi(.)$ is imposed, there is no automatic detection of non-linear relationships and/or interactions.
+:::
+
+## The Model
+
+::: callout-note
+## Specification
+
+$$
+y_i = \beta + \sum_{j=1}^P \omega_j x_{ij} + \varepsilon_i
+$$ {#eq-model-reg1}
+:::
+
+-   $\beta$ is the [**bias**]{style="color:red;"} (a.k.a. constant or intercept).
+
+-   $\omega$ is the [**weight**]{style="color:red;"} (a.k.a. partial slope coefficient).
+
+::: notes
+There are $P$ predictive features in the model.
+:::
+
+## Geometric Interpretation
+
+::: columns
+::: {.column width="50%"}
+### Hyperplane
+
+```{r}
+#| echo: false
+library(scatterplot3d)
+data("iris")
+wh <- iris$Species == "versicolor"
+x1 <- iris$Sepal.Width[wh]
+x2 <- iris$Petal.Width[wh]
+y <- iris$Sepal.Length[wh]
+mreg_df <- cbind.data.frame(x1,x2,y)
+LM <- lm(y ~ x1 + x2, data = mreg_df)
+s3d <- scatterplot3d(x1, x2, y,
+                     pch = 19, type = "p", color = "darkgray",
+                     grid = TRUE, box = FALSE,
+                     mar = c(2.5,2.5,2,1.5),
+                     angle = 55)
+s3d$plane3d(LM, draw_polygon = TRUE, draw_lines = TRUE,
+            polygon_args = list(col = rgb(.1,.2,.7,.5)))
+wh <- resid(LM) > 0
+s3d$points3d(x1[wh], x2[wh], y[wh], pch = 20, color = "darkgray")
+```
+:::
+
+::: {.column width="50%"}
+### Feature Space
+
+```{r}
+#| echo: false
+library(ggrepel)
+library(ggthemes)
+mreg_df <- mreg_df %>%
+  mutate(name = as.character(y))
+ggplot(mreg_df, aes(x = x1, y = x2), col = "#31688EFF",
+       label = name) +
+  geom_point(size = 1.5, col = "#31688EFF") +
+  geom_label_repel(aes(label = name),
+                  box.padding   = 0.10, 
+                  point.padding = 0.15,
+                  label.size = 0.05,
+                  label.padding = 0.02,
+                  segment.color = "#31688EFF",
+                  max.overlaps = 15)+
+  theme_bw()
+```
+:::
+:::
+
+::: {style="font-size: 75%"}
+**Note:** Figures are based on the `iris` data, specifically the Versicolor subset. X1 = sepal width, X2 = petal width, and y = sepal length.
+:::
+
+::: notes
+The regression surface takes the form of $\beta + \sum_j \omega_j x$ and is a hyperplane, in this case in a 3-dimensional space spanned by the predictive features and the labels. In SML, we often project the labels onto a space made up of the predictive features. We call this the feature space. The surface can be projected as a line (or a lower-dimensional hyper-plane) separating out the labels.
+:::
+
+## Loss Function
+
+-   For regression tasks, several loss functions can be formulated.
+
+-   Two common functions are:
+
+    -   **Absolute loss:** A.k.a. the (squared) $L_1$-norm, the goal is to minimize $\sum_{i=1}^{n_1} \lvert \psi_i - y_i \rvert$.
+
+    -   **Quadratic loss:** A.k.a. the (squared) $L_2$-norm, the goal is to minimize $\sum_{i=1}^{n_1} \left( \psi_i - y_i \right)^2$.
+
+-   Quadratic loss is the foundation of ordinary least squares.
+
+-   Absolute loss is used to minimize the impact of outliers.
+
+::: notes
+$L_2$ is also called the Euclidean norm.
+:::
+
+## Performance
+
+For regression tasks, three metrics are commonly computed over the test data:
+
+1.  **Mean absolute error:** $\text{MAE} = \frac{1}{n_2} \sum_{i=1}^{n_2} \lvert \psi_i - y_i \rvert$.
+2.  **Root mean squared error:** $\text{RMSE} = \sqrt{\frac{1}{n_2} \sum_{i=1}^{n_2} \left( \psi_i - y_i \right)^2}$.
+3.  **R-Squared:** $R^2 = r_{\psi,y}^2$.
+
+::: notes
+\(1\) We can compute each performance metric for both the training and test sets, but ultimately we care most about the test set; (2) note that the computation of \$R\^2\$ deviates from what you typically learn in econometrics; and (3) we want MAE and RMSE to be as small as possible (they are errors), whereas R-squared should be as high as possible.
+:::
+
+## Interpretation
+
+-   A typical approach is to show a [**partial dependence plot**]{style="color:red;"}.
+
+-   Here, we distinguish between
+
+    -   One or two focal predictive features, $\boldsymbol{x}_f$.
+
+    -   Controls, $\boldsymbol{x}_c$.
+
+-   We average the predicted values across the controls
+
+$$
+f(\boldsymbol{x}_f,\boldsymbol{q}) = \mathbb{E}_{\boldsymbol{x}_c} \left[ f(\boldsymbol{x}_c,\boldsymbol{x}_f,\boldsymbol{q}) \right] = \int f(\boldsymbol{x}_c,\boldsymbol{x}_f,\boldsymbol{q}) dp(\boldsymbol{x}_c)
+$$
+
+-   This is the equivalent of the (in)famous *ceteris paribus* condition.
+
+::: notes
+There are problems with partial dependence plots because focal features and controls tend to be correlated. Some alternatives---e.g., accumulated local effects---have been proposed, but those are not widely used in the social sciences.
+:::
+
+# Practice of Regression Analysis
+
+## Happiness around the Globe
+
+::: panel-tabset
+### Data
+
+-   2023 World Happiness Report [@helliwell2023World].
+
+-   Gallup World Poll data.
+
+-   Label: "Please imagine a ladder with steps numbered from 0 at the bottom to 10 at the top. The top of the ladder represents the best possible life for you and the bottom of the ladder represents the worst possible life for you. On which step of the ladder would you say you personally feel you stand at this time?"
+
+### Map
+
+![](Images/happymap.png){fig-align="center"}
+
+### Features
+
+-   Log per capita GDP.
+
+-   Social support from friends in troubled times.
+
+-   Healthy life expectancy.
+
+-   Freedom to make life choices.
+
+-   Generosity, i.e., charitable donations.
+
+-   Perceptions of corruption.
+:::
+
+## Splitting the Sample Using `rsample`
+
+::: panel-tabset
+### Preparation
+
+```{r}
+#| message: false
+library(rio)
+library(tidyverse)
+happy_df <- import("Data/whr23.dta")
+row.names(happy_df) <- happy_df$country
+happy_clean <- happy_df %>%
+  select(happiness,logpercapgdp,socialsupport,healthylifeexpectancy,
+         freedom,generosity,perceptionsofcorruption) %>%
+  na.omit
+```
+
+### Setup
+
+```{r}
+#| message: false
+library(tidymodels)
+tidymodels_prefer()
+set.seed(2922)
+happy_split <- initial_split(happy_clean, prop = 0.6, strata = happiness)
+happy_split
+```
+
+### Execution
+
+```{r}
+training_set <- training(happy_split)
+test_set <- testing(happy_split)
+```
+
+### Checking
+
+```{r}
+ks.test(training_set$happiness, test_set$happiness)
+```
+:::
+
+::: notes
+For a simple learning task like regression, it suffices to set aside 60% of the data as a training set. However, for more complex problems, we should set prop to a higher value. With a numeric label, stratification entails using quartiles.
+:::
+
+## Pre-Processing Using `recipes`
+
+-   For a regression problem, there really is often not any pre-processing needed.
+
+-   The predictive feature per capita GDP is typically skewed and might require a transformation, but that was already done for us.
+
+-   Hence, we skip this element for now and return to it shortly.
+
+## Training Using `parsnip`
+
+::: panel-tabset
+### Syntax
+
+-   We specify the algorithm, any tuning parameters, and the `mode` (i.e., task).
+
+-   We set the external learning engine (= implementation of the algorithm) using `set_engine`.
+
+-   We declare the model formula and training set using `fit`.
+
+-   Algorithms and engines can be found at [search parsnip models](https://www.tidymodels.org/find/parsnip/).
+
+### Using `lm`
+
+```{r}
+happy_fit <- linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("lm") %>%
+  fit(happiness ~ ., data = training_set)
+```
+
+### Inspect 1
+
+```{r}
+tidy(happy_fit)
+```
+
+### Inspect 2
+
+```{r}
+glance(happy_fit)
+```
+:::
+
+::: notes
+`tidymodels` builds on existing packages to implement algorithms. Often the same general algorithm has been implemented in different packages. The `set_engine` command controls which of those packages should be used. To get the estimates from the training, the `broom` package can be used. It has `tidy` and `glance` commands to portray the training results. The estimates shown using `tidy` will be applied to the test set.
+:::
+
+## Evaluation Using `yardstick`
+
+::: panel-tabset
+### Prediction
+
+```{r}
+happy_fit %>%
+  predict(test_set) %>%
+  bind_cols(test_set)
+```
+
+### Metrics
+
+```{r}
+happy_fit %>%
+  predict(test_set) %>%
+  bind_cols(test_set) %>%
+  metrics(truth = happiness, estimate = .pred)
+```
+:::
+
+## Partial Dependence Plot
+
+::: panel-tabset
+### DALEXtra
+
+![](Images/dalex.png){fig-align="center" width="150"}
+
+DALEX = [D]{style="color:red;"}escriptive m[A]{style="color:red;"}chine [L]{style="color:red;"}earning [EX]{style="color:red;"}planations [@biecek2018DALEX]
+
+### Explainer
+
+```{r}
+#| message: false
+library(DALEXtra)
+happy_explainer <- explain_tidymodels(
+  model = happy_fit,
+  data = test_set,
+  y = test_set$happiness
+)
+```
+
+### Plotter
+
+```{r}
+#| eval: false
+pdp_gdp <- model_profile(
+  happy_explainer,
+  variables = "logpercapgdp",
+  N = NULL
+)
+as_tibble(pdp_gdp$agr_profiles) %>%
+  ggplot(aes(`_x_`, `_yhat_`)) +
+  geom_line(size = 1.2, alpha = 0.8, color = "#31688EFF") +
+  geom_rug(sides = "b", col = "#31688EFF") +
+  labs(
+    x = "Log Per Capita GDP",
+    y = "Predicted Happiness",
+    color = NULL
+  ) +
+  theme_bw()
+```
+
+### Plot
+
+```{r}
+#| echo: false
+pdp_gdp <- model_profile(
+  happy_explainer,
+  variables = "logpercapgdp",
+  N = NULL
+)
+as_tibble(pdp_gdp$agr_profiles) %>%
+  ggplot(aes(`_x_`, `_yhat_`)) +
+  geom_line(size = 1.2, alpha = 0.8, color = "#31688EFF") +
+  geom_rug(sides = "b", color = "#31688EFF") +
+  labs(
+    x = "Log Per Capita GDP",
+    y = "Predicted Happiness",
+    color = NULL
+  ) +
+  theme_bw()
+```
+:::
+
+## Hooray!
+
+-   You just completed your first machine learning project.
+
+-   However, we took a shortcut by working with a subset of the data, instead of the whole file.
+
+-   Our code was not optimal since we did not create a **work flow**.
+
+## The Whole of the Data
+
+::: panel-tabset
+### Data
+
+```{r}
+happy_df <- import("Data/whr23.dta")
+head(happy_df)
+```
+
+### Comment
+
+Compared to the earlier example,
+
+-   There are missing data.
+
+-   We have a column `country` identifying the country, which is not a predictive feature.
+
+-   We have a column `stderr`, which is the standard error on the happiness scores and will be ignored.
+
+-   We have a column `continent`, which looks numeric but is a factor.
+
+-   We have a column `ISO3` that is fully redundant with `country`.
+
+### Next Steps
+
+-   Let us first,
+
+    -   Drop `ISO3` and `stderr`.
+
+    -   Turn `continent` into a proper factor.
+
+    -   Drop missing values (since we have no information about them except for their location).
+
+-   Next, we should create a recipe that
+
+    -   Creates dummies for `continent`, since that is what the regression needs.
+
+    -   Ensures that `country` will not be used as a predictor but remains available to flag instances.
+:::
+
+::: notes
+\(1\) `tidymodels` has quite good imputation facilities for the predictive features. The problem that we have is that we also lack information about the labels. In that case, list-wise deletion is pretty much our only option. (2) `recipes` is a great way to specify operations that need to be recycled.
+:::
+
+## Building a Recipe
+
+::: panel-tabset
+### Preparation
+
+```{r}
+work_df <- happy_df %>%
+  mutate(continent = factor(continent,
+                            labels = c("Africa", "Americas", "Asia",
+                                          "Europe", "Oceania"))) %>%
+  select(-c(stderr, ISO3)) %>%
+  na.omit
+```
+
+### Split Sample
+
+```{r}
+set.seed(1560)
+happy_split <- initial_split(work_df, prop = 0.6)
+training_set <- training(happy_split)
+test_set <- testing(happy_split)
+```
+
+### Recipe
+
+```{r}
+happy_recipe <- 
+  recipe(happiness ~ ., data = training_set) %>%
+  update_role(country, new_role = "id") %>%
+  step_dummy(continent)
+tidy(happy_recipe)
+```
+:::
+
+::: notes
+Note that `recipes` carries out steps in the order they are listed. Also note that I opted to do simple random sampling here, simply to show how that works (it is the default). Importantly the model formula used to be part of `fit()` and has now been appropriated by `recipes`.
+:::
+
+## How Does `recipes` Process Data?
+
+1.  The `recipe` call screens the data for types (numeric, factors, strings, and Booleans), as well as roles (e.g., outcome or predictor).
+2.  Any estimation is performed on the data specified in the recipe. If this is the training set, then a consequence is that the test set will never be touched---as should be the case.
+3.  Estimates from the training set will then be used to inform operations in the test set; nothing new will be estimated in the test set---again, as should be the case.
+
+::: notes
+Points 2 and 3 are crucial because they avoid so-called **data leakage** from test instances. These leakages are one reason why models may perform poorly upon deployment: they relied on data in the training process that are not normally available.
+:::
+
+## Building a Workflow
+
+-   Work flows are a very efficient way to build machine learning projects.
+
+-   They recognize that modeling is not just about fitting a model, but also about various pre- and post-processing steps.
+
+-   As such, work flows include elements from `parsnip`, `recipes`, and possibly other packages.
+
+## A Regression Work Flow
+
+::: panel-tabset
+### Flow
+
+```{r}
+happy_model <-
+  linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("lm")
+happy_flow <- 
+  workflow() %>%
+  add_model(happy_model) %>%
+  add_recipe(happy_recipe)
+```
+
+### Fit
+
+```{r}
+happy_fit <- fit(happy_flow, training_set)
+tidy(happy_fit)
+```
+:::
+
+# Inside Optimization Theory
+
+## Considerations
+
+-   Our training problem was simple:
+
+    -   Few training instances.
+
+    -   Few predictive features.
+
+    -   A simple loss function.
+
+-   This means we can do everything using calculus.
+
+-   Most machine learning problems are complex with lots of data and difficult loss functions.
+
+-   We want optimizers that
+
+    -   Are simple in terms of the calculus involved.
+
+    -   Can be evaluated numerically.
+
+    -   Require us to process little data at a time.
+
+-   These notes show how this can be achieved.
+
+## Sample Data
+
+::: columns
+::: {.column width="50%"}
+-   Consider two standardized features.
+
+-   The data generating process is $\psi_i = w x_i$.
+:::
+
+::: {.column width="50%"}
+```{r}
+#| echo: false
+#| message: false
+library(kableExtra)
+simple_df <- data.frame(
+  x = c(0.543, -0.917, 1.458, -0.267, -0.817),
+  y = c(0.671, -0.682, 1.421, -0.896, -0.514)
+)
+simple_df %>%
+  kbl() %>%
+  kable_material(full_width = FALSE,"striped")
+```
+:::
+:::
+
+::: notes
+Standardization means that we can ignore the bias of the regression model.
+:::
+
+## Minimizing Loss Through Calculus
+
+::: columns
+::: {.column width="50%"}
+```{r}
+#| echo: false
+#| message: false
+w <- seq(0.8, 1.2, 0.01)
+loss <- rep(NA, length(w))
+for (i in 1:length(w)) {
+  loss[i] <- sum((w[i] * simple_df$x - simple_df$y)^2)
+}
+plot_df <- cbind.data.frame(w, loss)
+ggplot(plot_df, aes(x = w, y = loss)) +
+  geom_line(linewidth = 2, col = "#31688EFF") +
+  xlab("w") +
+  ylab("Loss") +
+  theme_bw()
+```
+:::
+
+::: {.column width="50%"}
+-   We minimize $w = \text{argmin} \ L_2$.
+
+-   The calculus recipe is:
+
+    -   Obtain the **gradient:** $\nabla = \frac{dL_2}{dw}$.
+
+    -   Set to 0 and solve for $w$.
+
+-   This yields $w = 0.930$.
+:::
+:::
+
+::: notes
+The estimator is $w = \frac{\sum_{i=1}^{n_1} x_i y_i}{\sum_{i=1}^{n_1} x_i^2}$. Technically, we should apply the 2nd derivative test to ensure this produces a minimum rather than a maximum.
+:::
+
+## But ...
+
+We can bypass much of the math and summation and will show this in two steps:
+
+1.  Discovering the minimum through a hill-descending numeric algorithm.
+2.  Performing the minimization on small batches of instances or even single samples.
+
+The result is some form of [**gradient descent**]{style="color:red;"}---the computational workhorse of machine learning.
+
+## Batch Gradient Descent
+
+::: columns
+::: {.column width="50%"}
+1.  Make an initial guess of $\boldsymbol{\theta}$; we call this the starting value.
+
+2.  Update so that the $t$th estimate is
+
+    $$
+    \boldsymbol{\theta}^t = \boldsymbol{\theta}^{t-1} - \alpha \boldsymbol{\nabla}^{t-1}
+    $$ where $\alpha$ is the **learning rate**.
+
+3.  Repeat (**iterate**) until convergence.
+:::
+
+::: {.column width="50%"}
+```{r}
+#| echo: false
+ggplot(plot_df, aes(x = w, y = loss)) +
+  geom_line(linewidth = 2, color = "#31688EFF") +
+  geom_segment(aes(x = 1, y = 0.5204252, xend = 1.2, yend = 0.7922544),
+               color = "red", linewidth = 1.5) +
+  geom_segment(aes(x = 1.1, y = 0.5, xend = 1.1, yend = 0.6563398),
+               color = "red", linetype = "dashed") +
+  annotate("text",
+           x = 1.12,
+           y = 0.5,
+           label = expression(w^0), size = 10) +
+  xlab("w") +
+  ylab("Loss") +
+  theme_bw()
+```
+:::
+:::
+
+::: notes
+The red line shows the slope of the tangent. Since this is not 0, we know that we are not at a minimum. The slope at the starting value is positive, meaning we are ascending on the loss function. This means that the starting value is too high. Batch gradient descent now yields a negative adjustment that brings us to a lower estimate. We repeat the process until convergence, which is usually the point where relative changes in the loss function become too small to be of interest.
+:::
+
+## Illustration
+
+::: panel-tabset
+### Setup
+
+-   $w^0 = 1.1$.
+
+-   $\alpha = 0.1$.
+
+### Iteration
+
+::: columns
+::: {.column width="50%"}
+```{r}
+#| echo: false
+new1_df <- simple_df %>%
+  mutate(psi = 1.1*x,
+         error = psi - y,
+         xXerror = error*x)
+new1_df[,-3] %>%
+  kbl(digits = 3) %>%
+  kable_material(full_width = TRUE,"striped")
+```
+:::
+
+::: {.column woidth="50%"}
+```{r}
+#| echo: false
+iter1_df <- data.frame(
+  old = 1.100,
+  grad = NA,
+  adj = NA,
+  new = NA
+)
+iter1_df <- iter1_df %>%
+  mutate(grad = 2*(colSums(new1_df)[5]),
+         adj = 0.1 * grad,
+         new = old - adj)
+iter1_df %>%
+  kbl(digits = 3) %>%
+  kable_material(full_width = TRUE,"striped")
+```
+:::
+:::
+
+### Path
+
+```{r}
+#| echo: false
+path <- matrix(NA, nrow = 6, ncol = 4, byrow = TRUE)
+colnames(path) <- c("errorxX","gradient", "adjust", "w")
+path[1,4] <- 1.1
+for (i in 2:6) {
+  path[i,1] <- sum((path[i-1,4]*simple_df$x - simple_df$y)*simple_df$x)
+  path[i,2] <- 2*path[i,1]
+  path[i,3] <- 0.1*path[i,2]
+  path[i,4] <- path[i-1,4] - path[i,3]
+}
+path_df <- data.frame(
+  iter = 0:5,
+  est = path[,4]
+)
+ggplot(path_df, aes(x = iter, y = est)) +
+  geom_line(linewidth = 2, color = "#31688EFF") +
+  geom_hline(yintercept = 9.301e-01, color ="red") +
+  xlab("Iteration") +
+  ylab("Estimate") +
+  theme_bw()
+```
+:::
+
+::: notes
+Here, $\nabla^{t-1} = 2 \sum_{i=1}^{n_1} \left( w^{t-1} x_i - y_i \right) x_i$. The part behind the summation is called `xXerror` in the table.
+:::
+
+## Going Stochastic
+
+-   Batch gradient descent bypasses the problem of analytically solving $\boldsymbol{\nabla} = \boldsymbol{0}$.
+
+-   However, we still have to sum over all of the data and, with big data, this can be slow.
+
+-   What if we could sample a single instance and update on that basis $\rightarrow$ **stochastic gradient descent**.
+
+-   Recipe:
+
+    1.  Set the starting values.
+
+    2.  Randomly select an instance from the training set and update using $\boldsymbol{\theta}^t = \boldsymbol{\theta}^{t-1} - \alpha \boldsymbol{\nabla}_i^{t-1}$.
+
+    3.  Make many passes through the training data; each pass is called an **epoch**.
+
+    4.  Repeat this process until convergence has been reached.
+
+::: notes
+$\boldsymbol{\nabla}_i$ means that the gradient is based only on the data from the $i$th instance.
+:::
+
+## Illustration 1
+
+::: panel-tabset
+### Iteration
+
+-   Let $w^0 = 1.1$ and $\alpha = 0.1$.
+
+-   We select the 3rd instance with $x_3 = 1.458$ and $y_3 = 1.421$.
+
+-   For this observation, $\nabla_3^0 = 2 \cdot (1.1 \cdot 1.458 - 1.421) \cdot 1.458 = 0.533$.
+
+-   Consequently, $w^1 = 1.1 - 0.1 \cdot 0.533 = 1.047$.
+
+### Path
+
+```{r}
+#| echo: false
+iter <- 0:49
+epoch <- rep(1:10, each = 5)
+instance <- rep(c(3,4,5,1,2), 10)
+x <- rep(c(1.458,-0.267,-0.817,0.543,-0.917), 10)
+y <- rep(c(1.421,-0.896,-0.514,0.671,-0.682), 10)
+weight <- rep(NA,50)
+pred <- rep(NA,50)
+error <- rep(NA,50)
+xXerror <- rep(NA,50)
+grad <- rep(NA,50)
+oldcum <- rep(NA,50)
+G <- rep(NA,50)
+learn <- rep(NA,50)
+update <- rep(NA,50)
+epsilon <- 10^-08
+alpha <- 0.1
+weight[1] <- 1.1
+
+pred[1] <- weight[1]*x[1]
+error[1] <- pred[1] - y[1]
+xXerror[1] <- error[1]*x[1]
+grad[1] <- 2*xXerror[1]
+oldcum[1] <- 0
+G[1] <- grad[1]^2
+learn[1] <- alpha/sqrt(G[1] + epsilon)
+update[1] <- weight[1] - learn[1]*grad[1]
+
+for (i in 2:50) {
+  weight[i] <- update[i-1]
+  pred[i] <- weight[i]*x[i]
+  error[i] <- pred[i] - y[i]
+  xXerror[i] <- error[i]*x[i]
+  grad[i] <- 2*xXerror[i]
+  oldcum[i] <- G[i-1]
+  G[i] <- grad[i]^2 + oldcum[i]
+  learn[i] <- alpha/sqrt(G[i] + epsilon)
+  update[i] <- weight[i] - learn[i]*grad[i]
+}
+
+sgd_df <- cbind.data.frame(iter,weight)
+ggplot(sgd_df, aes(x = iter, y = weight)) +
+  geom_line(linewidth = 2, color = "#31688EFF") +
+  geom_hline(yintercept = 9.301e-01, color ="red") +
+  geom_vline(xintercept = 4, linetype = "dashed") +
+  geom_vline(xintercept = 9, linetype = "dashed") +
+  geom_vline(xintercept = 14, linetype = "dashed") +
+  geom_vline(xintercept = 19, linetype = "dashed") +
+  geom_vline(xintercept = 24, linetype = "dashed") +
+  geom_vline(xintercept = 29, linetype = "dashed") +
+  geom_vline(xintercept = 34, linetype = "dashed") +
+  geom_vline(xintercept = 39, linetype = "dashed") +
+  geom_vline(xintercept = 44, linetype = "dashed") +
+  geom_vline(xintercept = 49, linetype = "dashed") +
+  xlab("Iteration") +
+  ylab("Estimate") +
+  theme_bw()
+```
+:::
+
+::: notes
+In the path, I have implemented an adjustment on the learning rate that we shall discuss shortly. On the whole, we see that convergence is much slower than in batch gradient descent. However, at each iteration, the computations are much faster and can be parallelized. The net effect is often very fast convergence.
+:::
+
+## Illustration 2
+
+[SGD Simulation](https://youtube.com/shorts/iTmeVtvxb4E)
+
+## Mini Batch Gradient Descent
+
+-   Batch gradient descent uses all training instances in an iteration:
+
+    -   Advantage: Fast convergence.
+
+    -   Disadvantage: Requires sums.
+
+-   Stochastic gradient descent uses one training instance at a time:
+
+    -   Advantage: No sums.
+
+    -   Disadvantage: Slower convergence.
+
+-   A compromise---**mini batch gradient descent**---is to utilize small batches of data:
+
+    -   $1 < \text{batch size} \ll n_1$.
+
+## Optimizing the Optimizer
+
+1.  Adaptive learning rates:
+    -   Take smaller steps the closer one gets to the optimum.
+    -   Adaptive moment estimation (adam) is one of the better choices. [@ruder2017Overview]
+    -   Others include RMSprop and adadelta
+2.  Exits from local minimums:
+    -   Complex loss functions may have local minimums.
+    -   We want to avoid being trapped there.
+    -   One way to exit local minimums is to add some momentum, for instance, using Nesterov accelerated gradients [@ruder2017Overview].
+    -   These can be combined with adaptive learning rates, e.g., nadam.
+
+## References
+
+::: {#refs style="color: gray;"}
+:::
