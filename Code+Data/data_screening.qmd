@@ -1,0 +1,189 @@
+---
+title: "Know Thy Data:"
+subtitle: "Essential Data Screening Procedures for Machine Learning"
+author: "Marco R. Steenbergen"
+institute: "University of Zurich"
+date: today
+code-fold: true
+title-block-banner: true
+bibliography: /Users/poli-glot/Documents/Tools/references.bib
+format:
+  html:
+    self-contained: true
+    theme: journal
+editor: visual
+---
+
+# Introduction
+
+In any statistical analysis, getting to know your data is a crucial but sadly much-neglected step. This caries great risks, including errors and nonsensical results. Since machine learning algorithms are inductive, deriving nearly all of their insights from the data, the need for data screening is nowhere greater. Data screening should become one of the first activities in your machine learning work flow, lest you produce models that fail to predict or make incorrect predictions.
+
+These notes discuss a couple of data screening procedures that are part of my standard repertoire. These procedures are illustrated using data from the 2023 World Happiness Report [@helliwell2023World]. Once you have gone through these notes, you can practice the data screening steps on other data. A useful data set would be the Boston Housing data (version 2) that can be found in the `mlbench` package [@harrison1978Hedonic].
+
+# What Should Be the Focus of Our Attention?
+
+Machine algorithms come in many different flavors and not all data attributes are equally relevant to all algorithms. The following attributes, however, should be checked for nearly all algorithms.
+
+1.  Missing Values: Are there any missing values? If so, how many are there? Are values flagging missing data recognized as such or does it seem like they are treated like any other value?
+2.  Balance: For classification tasks, it is important to know the distribution over the classes. A key question here is whether some classes have very few instances, resulting in imbalance. Imbalanced data negatively affect predictive performance and may require special recipes in the learning process.
+3.  Outliers: It is important to check for skewness in regression task and to assess whether some features have clear outliers. If this is the case, then some form of pre-processing may be called for, lest algorithms end up focusing too much on the outliers.
+4.  Variance: Do attributes vary across instances or are they constant? Trying to account for variation through a constant does not work, no matter how fancy the algorithm.
+5.  Scale Differences: Some algorithms (e.g., kNN) are extremely sensitive to scale differences across features. It is important to know the minimums and maximums of the features so that one is aware of scale differences. In some cases, it may be necessary to place features on the same scale using normalization or standardization.
+6.  Correlations and Linear Dependencies: High correlations and linear dependencies among features can cause algorithms to break down. Note that correlations look at associations between two features only. With linear dependencies, we consider multiple features. If one feature is a (near-)perfect linear function of a range of other features one intends on using, then problems can occur without the pairwise correlations being excessive.
+7.  Non-linearity: It is useful to know whether the bivariate relationship between two features is roughly linear or distinctly non-linear. This could affect the modeling assumptions one wishes to make in a predictive algorithm.
+
+# A Data Screening Workflow
+
+My data screening workflow consists of three steps. First, I assess missingness. Next, I focus on univariate descriptives. I do this by considering the 5-number summary as well as univariate visualizations. Finally, I consider the bivariate relationships between features and assess linear dependencies.
+
+# The Workflow in Action
+
+## Loading Packages and Data
+
+```{r}
+#| message: false
+#| warning: false
+pacman::p_load("car", "gapminder", "GGally", "gridExtra", "naniar", "rio", "skimr",
+               "tidyverse")
+```
+
+We now have access to all the packages we shall need. The data are organized alphabetically by country. The data header is shown below.
+
+```{r}
+whr23 <- import("whr23.dta")
+row.names(whr23) <- whr23$country
+whr23 <- whr23 %>%
+  mutate(continent = factor(continent, labels = c("Africa", "Americas",
+                                                  "Asia", "Europe",
+                                                  "Oceania"))) %>%
+  select(c(-country,-stderr))
+head(whr23)
+```
+
+## Missing Values
+
+The World Happiness Report relies on the Gallup World Poll for its measure of subjective well-being or happiness. The original data set contains responses for 137 countries and has missing values only in the Palestine Territories (for healthy life expectancy). One could argue, however, that an ideal survey would have taken place in all countries identified by the United Nations (197 in total, if we include Kosovo and Taiwan). Hence, we added missing countries to our data frame.
+
+The missingness pattern is shown below. We have missing data for a little over 30 percent of the countries. The exception is continent, where we have complete data.
+
+```{r}
+#| warning: false
+gg_miss_var(whr23, show_pct = TRUE) +
+  labs(y = "% Missing") +
+  theme_bw()
+```
+
+## Univariate Descriptives
+
+### 5-Number Summary
+
+The 5-number summary yields information on the minimum, median, maximum, first, and third quartiles of the quantitative feature distributions. Sometimes---R does this---the mean is shown as well. From this, a great deal of information can be gleaned. We can observe whether there is variation (there would not be if the minimum and maximum are the same), what scale differences there are (comparing the ranges across features), and what skewness there is (by inspecting the distances between the 1st and 3rd quartiles relative to the median). R's `summary` command will give you the 5-number summary, but I prefer to use the package `skimr`, which also visualizes the distributions and shows the levels of non-missingness (an alternative to `naniar`), and standard deviations.
+
+```{r}
+skimmed <- skim(whr23)
+yank(skimmed, "numeric")
+```
+
+Looking at the results, we first note the following legend:
+
+-   p0 = minimum
+
+-   p25 = 1st quartile
+
+-   p50 = median (or 2nd quartile)
+
+-   p75 = 3rd quartile
+
+-   p100 = maximum
+
+Based on this legend, we first note quite large scale differences between the features. For instance, healthy life expectancy ranges between 51.53 and 77.28, whereas freedom runs between 0.38 and 0.96.
+
+We also notice that all features are characterized by some degree of variation. None of the features are effectively constants.
+
+There is skewness in some of the distributions. As an example consider social support. The distance between the 1st quartile and the median is greater than that between the median and the 3rd quartile. This is indicative of a positive skewness.
+
+### Distributions
+
+For categorical predictors, I use a bar-plot. For instance, the figure below shows the distribution of continents after missing values have been removed .
+
+```{r}
+#| message: false
+#| warning: false
+library(viridis)
+whr23 <- na.omit(whr23)
+ggplot(whr23, aes(continent, fill = continent)) +
+  geom_bar(aes(y = 100*(..count..)/sum(..count..)), alpha = 0.75,
+           show.legend = FALSE) +
+  scale_fill_viridis_d() +
+  xlab("") +
+  ylab("Percent") +
+  theme_bw()
+```
+
+For numeric variables, I like to use histograms with a density-overlay. An example is the graph for happiness, which shows a negative skew.
+
+```{r}
+#| warning: false
+ggplot(whr23, aes(x = happiness)) +
+  geom_histogram(aes(y = stat(density)),
+                 fill = "#21918c", alpha = 0.75) +
+  geom_density(stat = "density", color = "#fde725", size = 1) +
+  xlab("Happiness") +
+  ylab("Density") +
+  theme_bw()
+```
+
+If the goal is to detect outliers, box-and-whisker plots can be of great help. I am showing this for the feature of freedom. The plot consists of a box whose base or hinges are formed by the 1st and 3rd quartiles. Inside the box, another line indicates the location of the median. In our case, the median is situated almost equidistant from the 1st and 3rd quartiles. The length of the base is equal to the inter-quartile range (IQR), a measure of dispersion. The wider the base, the more dispersion there is. The height of the box is proportional to the square root of the sample size.
+
+```{r}
+#| warning: false
+ggplot(whr23, aes(x = freedom)) +
+  geom_boxplot(fill = "#21918c", alpha = 0.75) +
+  xlab("Freedom to Make Life Choices") +
+  theme_bw()
+
+```
+
+The whiskers are the lines extending from the box. These are drawn at a length of 1.5 times the IQR. In the present case, that would have taken the right whisker beyond the maximum observed value and hence its endpoint is extended only to the maximum. We can think of the range from the left to the right whisker as the range of "normal" values. The dots that we observe to the left of the left whisker can be considered outliers. These dots correspond to freedom values less than `r round(0.72 - 1.5*(0.87 - 0.72), 2)` and pertain to Afghanistan, Comoros, Lebanon, and Turkiye.
+
+## Bivariate Descriptives
+
+For the numeric variables in the data, we can create a matrix plot showing: (1) the univariate distributions; (2) scatter plots between pairs of features; and (3) correlations between pairs of features. I show this here for three features: happiness, freedom, and generosity, but generally one should do this for all features.
+
+```{r}
+#| warning: false
+whr23sub <- whr23 %>%
+  select(happiness, freedom, generosity)
+p <- ggpairs(whr23sub,
+             lower = list(continuous = "smooth_loess"),
+             upper = list(continuous = wrap(ggally_cor, displayGrid = FALSE)))
+p + theme_bw()
+  
+```
+
+On the diagonal, we see density plots of each of the features. The upper triangle is dedicated to correlations. We observe a sizable correlation between happiness and freedom, but no statistically significant correlation between generosity and happiness. Correlations, of course, measure linear associations. To see whether the relationships between the features are even remotely linear, we inspect the lower triangle of the matrix plot. Here, we see the scatter-plots and the LOESS plots. LOESS stands for locally weighted scatter-plot smoothing and is a technique that provides local approximations of the scatter. As such, it can detect non-linear relationships. We observe some evidence of non-linear relationships between all of the features, an aspect we may wish to take into consideration in our predictive models.
+
+### Variance Inflation Factors
+
+There are several ways in which we can check whether a predictive feature is a perfect *linear* combination of other features, a condition that is also known as perfect multicollinearity. One way to do this is to run each predictive feature on all other predictive features and to compute the $R^2$. Since collinearity affects the precision of our estimators, we generally parlay the $R^2$ into a so-called variance inflation factor:
+
+$$
+\mbox{VIF}_j = \frac{1}{1 - R_j^2}
+$$
+
+This is the factor by which the variance of the regression weight is inflated for the $j$th predictive feature. Generally, $\mbox{VIF}_j > 10$ is deemed problematic.
+
+```{r}
+test_fit <- lm(happiness ~ logpercapgdp + socialsupport +
+                 healthylifeexpectancy + freedom + generosity +
+                 perceptionsofcorruption,
+               data = whr23)
+vif(test_fit)
+```
+
+The `car` package contains a built-in VIF function. If we regress happiness on log per capita GDP, social support, healthy life expectancy, freedom, generosity, and perceptions of corruption, then we obtain the VIFs shown above. None of these is `NaN`, which would occur if $R_j^2 = 1$ and there is a perfect linear dependency/perfect multicollinearity. Indeed, none of the VIFs exceed 10 so that we are reassured that we need not to worry about linear dependencies.
+
+# References
+
+::: {#refs}
+:::
